@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FISCO BCOS 控制台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .status-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-card h3 {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .status-card p {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .result-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .result-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .contract-address-display {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 FISCO BCOS 控制台</h1>
+            <p>通过浏览器与区块链交互</p>
+        </div>
+
+        <!-- 区块链状态 -->
+        <div class="card">
+            <h2>📊 区块链状态</h2>
+            <button class="btn" onclick="checkHealth()">刷新状态</button>
+            <div class="status-section">
+                <div class="status-card">
+                    <h3>连接状态</h3>
+                    <p id="connectionStatus">-</p>
+                </div>
+                <div class="status-card">
+                    <h3>最新区块号</h3>
+                    <p id="blockNumber">-</p>
+                </div>
+                <div class="status-card">
+                    <h3>账户地址</h3>
+                    <p id="accountAddress" style="font-size: 0.9em;">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 合约操作 -->
+        <div class="card">
+            <h2>📝 HelloWorld 合约操作</h2>
+
+            <div id="contractAddressSection" class="hidden">
+                <div class="contract-address-display">
+                    <strong>当前合约地址：</strong>
+                    <span id="contractAddress"></span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h3>1. 部署合约</h3>
+                <p style="color: #666; margin-bottom: 10px;">首次使用请先部署合约</p>
+                <button class="btn" onclick="deployContract()">部署 HelloWorld 合约</button>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h3>2. 读取数据</h3>
+                <div class="form-group">
+                    <label>合约地址：</label>
+                    <input type="text" id="getContractAddress" placeholder="输入合约地址或使用上方部署的地址">
+                </div>
+                <button class="btn" onclick="getContractValue()">读取 (get)</button>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <h3>3. 设置数据</h3>
+                <div class="form-group">
+                    <label>合约地址：</label>
+                    <input type="text" id="setContractAddress" placeholder="输入合约地址或使用上方部署的地址">
+                </div>
+                <div class="form-group">
+                    <label>新值：</label>
+                    <input type="text" id="newValue" placeholder="输入要设置的值">
+                </div>
+                <button class="btn" onclick="setContractValue()">设置 (set)</button>
+            </div>
+        </div>
+
+        <!-- API 调用结果 -->
+        <div class="card">
+            <h2>📤 API 调用结果</h2>
+            <div id="resultBox" class="result-box">
+                <pre style="color: #666;">点击上方按钮进行 API 调用，结果将显示在这里...</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentContractAddress = '';
+
+        // 页面加载时自动检查健康状态
+        window.onload = function() {
+            checkHealth();
+        };
+
+        // 检查健康状态
+        async function checkHealth() {
+            try {
+                showResult('正在检查连接状态...', false);
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                document.getElementById('connectionStatus').innerHTML =
+                    data.connected ? '<span class="badge badge-success">已连接</span>' : '<span class="badge badge-error">未连接</span>';
+                document.getElementById('blockNumber').textContent = data.blockNumber || '-';
+                document.getElementById('accountAddress').textContent = data.accountAddress || '-';
+
+                showResult(data, true);
+            } catch (error) {
+                document.getElementById('connectionStatus').innerHTML = '<span class="badge badge-error">连接失败</span>';
+                showResult({ status: 'error', message: error.message }, false);
+            }
+        }
+
+        // 部署合约
+        async function deployContract() {
+            try {
+                showResult('正在部署合约...', false);
+                const response = await fetch(`${API_BASE}/contract/deploy`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentContractAddress = data.contractAddress;
+                    document.getElementById('contractAddress').textContent = currentContractAddress;
+                    document.getElementById('contractAddressSection').classList.remove('hidden');
+                    document.getElementById('getContractAddress').value = currentContractAddress;
+                    document.getElementById('setContractAddress').value = currentContractAddress;
+                }
+
+                showResult(data, data.status === 'success');
+            } catch (error) {
+                showResult({ status: 'error', message: error.message }, false);
+            }
+        }
+
+        // 获取合约值
+        async function getContractValue() {
+            const address = document.getElementById('getContractAddress').value;
+            if (!address) {
+                showResult({ status: 'error', message: '请输入合约地址' }, false);
+                return;
+            }
+
+            try {
+                showResult('正在读取合约数据...', false);
+                const response = await fetch(`${API_BASE}/contract/${address}/get`);
+                const data = await response.json();
+                showResult(data, data.status === 'success');
+            } catch (error) {
+                showResult({ status: 'error', message: error.message }, false);
+            }
+        }
+
+        // 设置合约值
+        async function setContractValue() {
+            const address = document.getElementById('setContractAddress').value;
+            const value = document.getElementById('newValue').value;
+
+            if (!address) {
+                showResult({ status: 'error', message: '请输入合约地址' }, false);
+                return;
+            }
+
+            if (!value) {
+                showResult({ status: 'error', message: '请输入要设置的值' }, false);
+                return;
+            }
+
+            try {
+                showResult('正在设置合约数据...', false);
+                const response = await fetch(`${API_BASE}/contract/${address}/set`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ value: value })
+                });
+                const data = await response.json();
+                showResult(data, data.status === 'success');
+            } catch (error) {
+                showResult({ status: 'error', message: error.message }, false);
+            }
+        }
+
+        // 显示结果
+        function showResult(data, isSuccess) {
+            const resultBox = document.getElementById('resultBox');
+            const badge = isSuccess ?
+                '<span class="badge badge-success">成功</span>' :
+                '<span class="badge badge-error">失败</span>';
+
+            if (typeof data === 'string') {
+                resultBox.innerHTML = `<pre>${data}</pre>`;
+            } else {
+                resultBox.innerHTML = `<pre>${badge}\n\n${JSON.stringify(data, null, 2)}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,6848 @@
+openapi: 3.0.3
+info:
+  title: 供应链金融系统 API文档
+  description: 基于FISCO BCOS区块链的供应链金融系统接口文档
+  contact:
+    name: 开发团队
+  version: 1.0.0
+servers:
+- url: http://localhost:8080
+  description: Inferred Url
+tags:
+- name: bcos-controller
+  description: Bcos Controller
+- name: 仓单管理
+  description: Warehouse Receipt Controller
+- name: 企业和用户关联查询
+  description: Enterprise User Relation Controller
+- name: 企业管理
+  description: Enterprise Controller
+- name: 合约状态查询
+  description: Contract Status Controller
+- name: 审计日志管理
+  description: Audit Log Controller
+- name: 应收账款管理
+  description: Receivable Controller
+- name: 智能合约部署
+  description: Deploy Controller
+- name: 用户管理
+  description: User Controller
+- name: 票据管理
+  description: Bill Controller
+- name: 认证管理
+  description: Auth Controller
+- name: 邀请码管理
+  description: Invitation Code Controller
+paths:
+  /api/audit/entity/{entityType}/{entityId}:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 查询实体的操作历史
+      description: 查询特定实体的所有操作记录
+      operationId: getEntityHistoryUsingGET
+      parameters:
+      - name: entityType
+        in: path
+        description: 实体类型
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: entityId
+        in: path
+        description: 实体ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«审计日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/logs:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 分页查询审计日志
+      description: 支持多条件组合查询审计日志
+      operationId: queryAuditLogsUsingGET
+      parameters:
+      - name: actionType
+        in: query
+        description: 操作类型（CREATE, UPDATE, DELETE等）
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        description: 结束时间
+        required: false
+        style: form
+        schema:
+          type: string
+          format: date-time
+      - name: entityId
+        in: query
+        description: 实体ID
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: entityType
+        in: query
+        description: 实体类型
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: isSuccess
+        in: query
+        description: 是否成功
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: module
+        in: query
+        description: 操作模块（BILL, RECEIVABLE, WAREHOUSE_RECEIPT等）
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: 页码（从0开始）
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        description: 每页大小
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: sortDirection
+        in: query
+        description: 排序方向（ASC, DESC）
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: sortField
+        in: query
+        description: 排序字段
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: startDate
+        in: query
+        description: 开始时间
+        required: false
+        style: form
+        schema:
+          type: string
+          format: date-time
+      - name: userAddress
+        in: query
+        description: 操作人地址
+        required: false
+        style: form
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Page«审计日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/logs/recent:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 获取最近的审计日志
+      description: 获取最近的操作记录
+      operationId: getRecentLogsUsingGET
+      parameters:
+      - name: limit
+        in: query
+        description: 返回数量限制
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«审计日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/logs/{id}:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 获取审计日志详情
+      description: 根据ID查询审计日志的详细信息
+      operationId: getAuditLogByIdUsingGET
+      parameters:
+      - name: id
+        in: path
+        description: 审计日志ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«审计日志»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/statistics:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 统计审计日志
+      description: 获取操作统计数据
+      operationId: getStatisticsUsingGET
+      parameters:
+      - name: startDate
+        in: query
+        description: 开始时间
+        required: false
+        style: form
+        schema:
+          type: string
+          format: date-time
+      - name: endDate
+        in: query
+        description: 结束时间
+        required: false
+        style: form
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«审计日志统计»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/tx/{txHash}:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 根据交易哈希查询
+      description: 根据区块链交易哈希查询相关的审计日志
+      operationId: getLogsByTxHashUsingGET
+      parameters:
+      - name: txHash
+        in: path
+        description: 交易哈希
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«审计日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/audit/user/{userAddress}:
+    get:
+      tags:
+      - 审计日志管理
+      summary: 查询用户的操作历史
+      description: 查询特定用户的所有操作记录
+      operationId: getUserHistoryUsingGET
+      parameters:
+      - name: userAddress
+        in: path
+        description: 用户地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«审计日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/auth/api-key:
+    post:
+      tags:
+      - 认证管理
+      summary: API密钥认证
+      description: 使用API密钥获取JWT令牌（适用于系统间调用）
+      operationId: authenticateWithApiKeyUsingPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiKeyRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,string»»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/auth/enterprise-login:
+    post:
+      tags:
+      - 认证管理
+      summary: 企业登录
+      description: 使用区块链地址和密码登录（向后兼容）
+      operationId: enterpriseLoginUsingPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,string»»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/auth/login:
+    post:
+      tags:
+      - 认证管理
+      summary: 用户登录
+      description: 使用用户名和密码登录（推荐方式）
+      operationId: userLoginUsingPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,object»»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/auth/register:
+    post:
+      tags:
+      - 认证管理
+      summary: 用户注册
+      description: 用户使用企业邀请码进行注册，注册后需要企业审核
+      operationId: registerUserUsingPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/用户注册请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«User»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/auth/validate:
+    post:
+      tags:
+      - 认证管理
+      summary: 验证令牌
+      description: 验证JWT令牌是否有效
+      operationId: validateTokenUsingPOST
+      parameters:
+      - name: Authorization
+        in: header
+        description: Authorization
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,object»»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/:
+    get:
+      tags:
+      - bcos-controller
+      summary: index
+      operationId: indexUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/account:
+    get:
+      tags:
+      - bcos-controller
+      summary: getAccountInfo
+      operationId: getAccountInfoUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/block:
+    get:
+      tags:
+      - bcos-controller
+      summary: getBlock
+      operationId: getBlockUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/block/latest:
+    get:
+      tags:
+      - bcos-controller
+      summary: getLatestBlockNumber
+      operationId: getLatestBlockNumberUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/block/{number}:
+    get:
+      tags:
+      - bcos-controller
+      summary: getBlockByNumber
+      operationId: getBlockByNumberUsingGET
+      parameters:
+      - name: number
+        in: path
+        description: number
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract/deploy:
+    post:
+      tags:
+      - bcos-controller
+      summary: deployHelloWorld
+      operationId: deployHelloWorldUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract/{address}/get:
+    get:
+      tags:
+      - bcos-controller
+      summary: callHelloWorldGet
+      operationId: callHelloWorldGetUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: address
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract/{address}/set:
+    post:
+      tags:
+      - bcos-controller
+      summary: callHelloWorldSet
+      operationId: callHelloWorldSetUsingPOST
+      parameters:
+      - name: address
+        in: path
+        description: address
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/health:
+    get:
+      tags:
+      - bcos-controller
+      summary: health
+      operationId: healthUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/nodes:
+    get:
+      tags:
+      - bcos-controller
+      summary: getPeers
+      operationId: getPeersUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill:
+    post:
+      tags:
+      - 票据管理
+      summary: 开票
+      description: 出票人开立票据，使用IssueBillParams结构体封装参数，避免Solidity 16变量限制
+      operationId: issueBillUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/开票请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}:
+    get:
+      tags:
+      - 票据管理
+      summary: 获取票据详情
+      description: 根据票据ID查询详细信息
+      operationId: getBillUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/discount:
+    post:
+      tags:
+      - 票据管理
+      summary: 票据贴现
+      description: 当前持票人将票据贴现给金融机构
+      operationId: discountBillUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/票据贴现请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据贴现响应»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/discounts:
+    get:
+      tags:
+      - 票据管理
+      summary: 获取票据贴现历史
+      description: 查询票据的所有贴现记录
+      operationId: getDiscountHistoryUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«贴现记录»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/endorse:
+    post:
+      tags:
+      - 票据管理
+      summary: 票据背书
+      description: 当前持票人将票据背书转让给被背书人
+      operationId: endorseBillUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/票据背书请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据背书响应»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/endorsements:
+    get:
+      tags:
+      - 票据管理
+      summary: 获取票据背书历史
+      description: 查询票据的所有背书记录，按时间顺序排列
+      operationId: getEndorsementHistoryUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«背书记录»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/endorsements/chain:
+    get:
+      tags:
+      - 票据管理
+      summary: 从区块链获取背书历史
+      description: 从区块链查询票据的所有背书记录，用于验证数据完整性
+      operationId: getEndorsementHistoryFromChainUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Map«string,object»»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/endorsements/validate:
+    get:
+      tags:
+      - 票据管理
+      summary: 验证背书历史完整性
+      description: 对比数据库和区块链上的背书记录，验证数据完整性
+      operationId: validateEndorsementHistoryUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,object»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/maturity:
+    post:
+      tags:
+      - 票据管理
+      summary: 票据到期处理
+      description: 处理已贴现票据的到期，自动计算利息并更新状态
+      operationId: handleBillMaturityUsingPOST
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据还款响应»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/repay:
+    post:
+      tags:
+      - 票据管理
+      summary: 票据还款
+      description: 承兑人主动还款，支持提前还款或逾期还款
+      operationId: repayBillUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/票据还款请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«票据还款响应»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/bill/{billId}/repayments:
+    get:
+      tags:
+      - 票据管理
+      summary: 获取票据还款历史
+      description: 查询票据的所有还款记录
+      operationId: getRepaymentHistoryUsingGET
+      parameters:
+      - name: billId
+        in: path
+        description: 票据ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«还款记录»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract-status/bill:
+    get:
+      tags:
+      - 合约状态查询
+      summary: 查询Bill合约状态
+      operationId: getBillContractStatusUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract-status/code/{address}:
+    get:
+      tags:
+      - 合约状态查询
+      summary: 查询合约代码
+      operationId: getContractCodeUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: address
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract-status/overview:
+    get:
+      tags:
+      - 合约状态查询
+      summary: 查询所有合约状态概览
+      operationId: getContractOverviewUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract-status/receivable:
+    get:
+      tags:
+      - 合约状态查询
+      summary: 查询Receivable合约状态
+      operationId: getReceivableContractStatusUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/contract-status/warehouse-receipt:
+    get:
+      tags:
+      - 合约状态查询
+      summary: 查询WarehouseReceipt合约状态
+      operationId: getWarehouseReceiptContractStatusUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/deploy/all:
+    post:
+      tags:
+      - 智能合约部署
+      summary: 部署所有合约
+      operationId: deployAllUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/deploy/bill:
+    post:
+      tags:
+      - 智能合约部署
+      summary: 部署Bill合约
+      operationId: deployBillUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/deploy/enterprise-registry:
+    post:
+      tags:
+      - 智能合约部署
+      summary: 部署EnterpriseRegistry合约
+      operationId: deployEnterpriseRegistryUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/deploy/receivable:
+    post:
+      tags:
+      - 智能合约部署
+      summary: 部署Receivable合约
+      operationId: deployReceivableUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/deploy/warehouse-receipt:
+    post:
+      tags:
+      - 智能合约部署
+      summary: 部署WarehouseReceipt合约
+      operationId: deployWarehouseReceiptUsingPOST
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/active:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取所有活跃企业
+      description: 查询所有状态为ACTIVE的企业列表
+      operationId: getActiveEnterprisesUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Enterprise»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/audit-logs:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取所有审核日志
+      description: 分页查询所有企业的审核操作日志
+      operationId: getAllAuditLogsUsingGET
+      parameters:
+      - name: page
+        in: query
+        description: 页码（从0开始）
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        description: 每页大小
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: sortField
+        in: query
+        description: 排序字段
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: sortDirection
+        in: query
+        description: 排序方向（ASC, DESC）
+        required: false
+        style: form
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Page«企业审核日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/audit-logs/action/{action}:
+    get:
+      tags:
+      - 企业管理
+      summary: 按审核动作查询日志
+      description: 根据审核动作（APPROVE/REJECT等）查询审核日志
+      operationId: getAuditLogsByActionUsingGET
+      parameters:
+      - name: action
+        in: path
+        description: 审核动作
+        required: true
+        style: simple
+        schema:
+          type: string
+          enum:
+          - ACTIVATE
+          - APPROVE
+          - BLACKLIST
+          - REJECT
+          - SUSPEND
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«企业审核日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/audit-statistics:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取审核统计信息
+      description: 统计审核人的审核次数
+      operationId: getAuditorStatisticsUsingGET
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Map«string,long»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/batch-approve:
+    post:
+      tags:
+      - 企业管理
+      summary: 批量审核企业
+      description: 批量审核通过多个企业注册申请
+      operationId: batchApproveEnterprisesUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«批量审核结果»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/batch-reject:
+    post:
+      tags:
+      - 企业管理
+      summary: 批量拒绝企业
+      description: 批量拒绝多个企业注册申请
+      operationId: batchRejectEnterprisesUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«批量审核结果»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/pending:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取待审核企业列表
+      description: 查询所有状态为PENDING的待审核企业（支持分页）
+      operationId: getPendingEnterprisesUsingGET
+      parameters:
+      - name: page
+        in: query
+        description: 页码（从0开始）
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        description: 每页大小
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: sortField
+        in: query
+        description: 排序字段
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: sortDirection
+        in: query
+        description: 排序方向（ASC, DESC）
+        required: false
+        style: form
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Page«Enterprise»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/rating:
+    get:
+      tags:
+      - 企业管理
+      summary: 按评级范围查询企业
+      description: 查询信用评级在指定范围内的企业
+      operationId: getEnterprisesByRatingRangeUsingGET
+      parameters:
+      - name: min
+        in: query
+        description: 最低评级
+        required: true
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: max
+        in: query
+        description: 最高评级
+        required: true
+        style: form
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Enterprise»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/register:
+    post:
+      tags:
+      - 企业管理
+      summary: 注册企业
+      description: 注册新的企业，需要提供企业基本信息
+      operationId: registerEnterpriseUsingPOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Enterprise'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Enterprise»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/role/{role}:
+    get:
+      tags:
+      - 企业管理
+      summary: 按角色查询企业
+      description: 根据企业角色查询企业列表
+      operationId: getEnterprisesByRoleUsingGET
+      parameters:
+      - name: role
+        in: path
+        description: 企业角色
+        required: true
+        style: simple
+        schema:
+          type: string
+          enum:
+          - CORE_ENTERPRISE
+          - FINANCIAL_INSTITUTION
+          - REGULATOR
+          - SUPPLIER
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Enterprise»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/status/{status}:
+    get:
+      tags:
+      - 企业管理
+      summary: 按状态查询企业
+      description: 根据企业状态查询企业列表
+      operationId: getEnterprisesByStatusUsingGET
+      parameters:
+      - name: status
+        in: path
+        description: 企业状态
+        required: true
+        style: simple
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - BLACKLISTED
+          - PENDING
+          - SUSPENDED
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Enterprise»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取企业信息
+      description: 根据区块链地址查询企业详细信息
+      operationId: getEnterpriseUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Enterprise»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/approve:
+    put:
+      tags:
+      - 企业管理
+      summary: 审核企业
+      description: 管理员审核通过企业注册
+      operationId: approveEnterpriseUsingPUT
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/audit-history:
+    get:
+      tags:
+      - 企业管理
+      summary: 获取企业审核历史
+      description: 查询指定企业的审核操作历史
+      operationId: getEnterpriseAuditHistoryUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«企业审核日志»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/credit-limit:
+    put:
+      tags:
+      - 企业管理
+      summary: 设置授信额度
+      description: 为金融机构设置企业的授信额度
+      operationId: setCreditLimitUsingPUT
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: number
+              format: bigdecimal
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/credit-rating:
+    put:
+      tags:
+      - 企业管理
+      summary: 更新信用评级
+      description: 更新企业信用评级，范围0-100
+      operationId: updateCreditRatingUsingPUT
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: integer
+              format: int32
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/reject:
+    put:
+      tags:
+      - 企业管理
+      summary: 拒绝企业注册
+      description: 管理员拒绝企业注册申请
+      operationId: rejectEnterpriseUsingPUT
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/enterprise/{address}/status:
+    put:
+      tags:
+      - 企业管理
+      summary: 更新企业状态
+      description: 更新企业状态（激活、暂停、拉黑等）
+      operationId: updateEnterpriseStatusUsingPUT
+      parameters:
+      - name: address
+        in: path
+        description: 企业区块链地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              enum:
+              - ACTIVE
+              - BLACKLISTED
+              - PENDING
+              - SUSPENDED
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/enterprise/address/{address}:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 根据地址获取企业及其所有用户
+      description: 根据区块链地址查询企业详情和所有用户列表
+      operationId: getEnterpriseWithUsersByAddressUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 企业地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«企业用户信息»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/enterprise/{enterpriseId}:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 获取企业及其所有用户
+      description: 根据企业ID查询企业详情和所有用户列表
+      operationId: getEnterpriseWithUsersUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«企业用户信息»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/enterprise/{enterpriseId}/active-users:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 获取企业活跃用户
+      description: 获取指定企业的所有活跃用户
+      operationId: getActiveUsersByEnterpriseUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«User»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/enterprise/{enterpriseId}/user-count:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 统计企业用户数量
+      description: 统计指定企业的用户总数
+      operationId: countUsersByEnterpriseUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«long»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/me:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 获取当前用户及其企业信息
+      description: 获取当前登录用户的详情和所属企业信息
+      operationId: getCurrentUserWithEnterpriseUsingGET
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«用户企业信息»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/user/username/{username}:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 根据用户名获取用户及其企业信息
+      description: 根据用户名查询用户详情和所属企业信息
+      operationId: getUserWithEnterpriseByUsernameUsingGET
+      parameters:
+      - name: username
+        in: path
+        description: 用户名
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«用户企业信息»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/user/{userId}:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 获取用户及其企业信息
+      description: 根据用户ID查询用户详情和所属企业信息
+      operationId: getUserWithEnterpriseUsingGET
+      parameters:
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«用户企业信息»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/relations/user/{userId}/enterprise/{enterpriseId}/verify:
+    get:
+      tags:
+      - 企业和用户关联查询
+      summary: 验证用户归属
+      description: 验证用户是否属于指定企业
+      operationId: verifyUserBelongsToEnterpriseUsingGET
+      parameters:
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«boolean»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/enterprise/{enterpriseId}:
+    get:
+      tags:
+      - 邀请码管理
+      summary: 获取企业邀请码
+      description: 查询指定企业的所有邀请码
+      operationId: getCodesByEnterpriseUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«邀请码»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/enterprise/{enterpriseId}/active:
+    get:
+      tags:
+      - 邀请码管理
+      summary: 获取有效邀请码
+      description: 查询指定企业的所有有效邀请码
+      operationId: getActiveCodesByEnterpriseUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«邀请码»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/generate:
+    post:
+      tags:
+      - 邀请码管理
+      summary: 生成邀请码
+      description: 为企业生成新的邀请码
+      operationId: generateCodeUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateCodeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«邀请码»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/validate/{code}:
+    get:
+      tags:
+      - 邀请码管理
+      summary: 验证邀请码
+      description: 验证邀请码是否有效
+      operationId: validateCodeUsingGET
+      parameters:
+      - name: code
+        in: path
+        description: 邀请码
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«邀请码»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/{codeId}:
+    get:
+      tags:
+      - 邀请码管理
+      summary: 获取邀请码详情
+      description: 查询邀请码详细信息
+      operationId: getCodeByIdUsingGET
+      parameters:
+      - name: codeId
+        in: path
+        description: 邀请码ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«邀请码»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+    delete:
+      tags:
+      - 邀请码管理
+      summary: 删除邀请码
+      description: 删除指定的邀请码
+      operationId: deleteCodeUsingDELETE
+      parameters:
+      - name: codeId
+        in: path
+        description: 邀请码ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/{codeId}/disable:
+    put:
+      tags:
+      - 邀请码管理
+      summary: 禁用邀请码
+      description: 禁用指定的邀请码
+      operationId: disableCodeUsingPUT
+      parameters:
+      - name: codeId
+        in: path
+        description: 邀请码ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/invitation-codes/{codeId}/enable:
+    put:
+      tags:
+      - 邀请码管理
+      summary: 启用邀请码
+      description: 启用指定的邀请码
+      operationId: enableCodeUsingPUT
+      parameters:
+      - name: codeId
+        in: path
+        description: 邀请码ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable:
+    post:
+      tags:
+      - 应收账款管理
+      summary: 创建应收账款
+      description: 供应商创建新的应收账款，等待核心企业确认。使用CreateReceivableParams结构体封装参数，避免Solidity
+        16变量限制
+      operationId: createReceivableUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/创建应收账款请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Receivable»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/core-enterprise/{address}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 获取核心企业的应付账款
+      description: 查询指定核心企业的所有应付账款
+      operationId: getCoreEnterpriseReceivablesUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 核心企业地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Receivable»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/financier/{address}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 获取资金方的融资账款
+      description: 查询指定金融机构的所有融资账款
+      operationId: getFinancierReceivablesUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 金融机构地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Receivable»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/holder/{address}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 获取持票人的应收账款
+      description: 查询当前持票人持有的所有应收账款
+      operationId: getHolderReceivablesUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 持票人地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Receivable»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/status/{status}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 按状态查询应收账款
+      description: 根据状态查询应收账款列表
+      operationId: getReceivablesByStatusUsingGET
+      parameters:
+      - name: status
+        in: path
+        description: 应收账款状态
+        required: true
+        style: simple
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - CONFIRMED
+          - CREATED
+          - DEFAULTED
+          - FINANCED
+          - REPAID
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Receivable»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/supplier/{address}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 获取供应商的应收账款
+      description: 查询指定供应商的所有应收账款
+      operationId: getSupplierReceivablesUsingGET
+      parameters:
+      - name: address
+        in: path
+        description: 供应商地址
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«Receivable»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/{receivableId}:
+    get:
+      tags:
+      - 应收账款管理
+      summary: 获取应收账款详情
+      description: 根据应收账款ID查询详细信息
+      operationId: getReceivableUsingGET
+      parameters:
+      - name: receivableId
+        in: path
+        description: 应收账款ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Receivable»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/{receivableId}/confirm:
+    put:
+      tags:
+      - 应收账款管理
+      summary: 确认应收账款
+      description: 核心企业确认应收账款，确认后可进行融资
+      operationId: confirmReceivableUsingPUT
+      parameters:
+      - name: receivableId
+        in: path
+        description: 应收账款ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/{receivableId}/finance:
+    put:
+      tags:
+      - 应收账款管理
+      summary: 应收账款融资
+      description: 金融机构为已确认的应收账款提供融资
+      operationId: financeReceivableUsingPUT
+      parameters:
+      - name: receivableId
+        in: path
+        description: 应收账款ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/{receivableId}/repay:
+    put:
+      tags:
+      - 应收账款管理
+      summary: 应收账款还款
+      description: 核心企业或金融机构进行还款
+      operationId: repayReceivableUsingPUT
+      parameters:
+      - name: receivableId
+        in: path
+        description: 应收账款ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: number
+              format: bigdecimal
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/receivable/{receivableId}/transfer:
+    put:
+      tags:
+      - 应收账款管理
+      summary: 转让应收账款
+      description: 将应收账款转让给新的持有人
+      operationId: transferReceivableUsingPUT
+      parameters:
+      - name: receivableId
+        in: path
+        description: 应收账款ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Void»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users:
+    get:
+      tags:
+      - 用户管理
+      summary: 查询用户列表
+      description: 分页查询用户列表
+      operationId: getUsersUsingGET
+      parameters:
+      - name: page
+        in: query
+        description: 页码
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: size
+        in: query
+        description: 每页大小
+        required: false
+        style: form
+        schema:
+          type: integer
+          format: int32
+      - name: sortBy
+        in: query
+        description: 排序字段
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: sortDir
+        in: query
+        description: 排序方向
+        required: false
+        style: form
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«Page«User»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+    post:
+      tags:
+      - 用户管理
+      summary: 创建用户
+      description: 创建新用户账户
+      operationId: createUserUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«User»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/enterprise/{enterpriseId}:
+    get:
+      tags:
+      - 用户管理
+      summary: 获取企业用户
+      description: 查询指定企业的所有用户
+      operationId: getEnterpriseUsersUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«User»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/enterprise/{enterpriseId}/pending:
+    get:
+      tags:
+      - 用户管理
+      summary: 获取待审核用户
+      description: 查询指定企业的所有待审核用户
+      operationId: getPendingUsersUsingGET
+      parameters:
+      - name: enterpriseId
+        in: path
+        description: 企业ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«User»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/me:
+    get:
+      tags:
+      - 用户管理
+      summary: 获取当前用户信息
+      description: 获取当前登录用户的详细信息
+      operationId: getCurrentUserUsingGET
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«User»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/search:
+    get:
+      tags:
+      - 用户管理
+      summary: 搜索用户
+      description: 按真实姓名搜索用户
+      operationId: searchUsersUsingGET
+      parameters:
+      - name: keyword
+        in: query
+        description: 搜索关键词
+        required: true
+        style: form
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«User»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}:
+    get:
+      tags:
+      - 用户管理
+      summary: 获取用户信息
+      description: 根据ID查询用户详细信息
+      operationId: getUserUsingGET
+      parameters:
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«User»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+    put:
+      tags:
+      - 用户管理
+      summary: 更新用户信息
+      description: 更新指定用户的信息
+      operationId: updateUserUsingPUT
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«User»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+    delete:
+      tags:
+      - 用户管理
+      summary: 删除用户
+      description: 删除指定用户
+      operationId: deleteUserUsingDELETE
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}/approve:
+    put:
+      tags:
+      - 用户管理
+      summary: 审核通过用户
+      description: 企业审核通过用户注册申请
+      operationId: approveUserUsingPUT
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}/password:
+    put:
+      tags:
+      - 用户管理
+      summary: 修改密码
+      description: 用户修改自己的密码
+      operationId: changePasswordUsingPUT
+      parameters:
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}/reject:
+    put:
+      tags:
+      - 用户管理
+      summary: 拒绝用户注册
+      description: 企业拒绝用户注册申请
+      operationId: rejectUserUsingPUT
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}/reset-password:
+    put:
+      tags:
+      - 用户管理
+      summary: 重置密码
+      description: 管理员重置指定用户的密码
+      operationId: resetPasswordUsingPUT
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/users/{userId}/status:
+    put:
+      tags:
+      - 用户管理
+      summary: 设置用户状态
+      description: 启用/禁用/锁定用户
+      operationId: setUserStatusUsingPUT
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: userId
+        in: path
+        description: 用户ID
+        required: true
+        style: simple
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUserStatusRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«string»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/warehouse-receipt:
+    post:
+      tags:
+      - 仓单管理
+      summary: 创建仓单
+      description: 货主创建仓单，使用CreateReceiptParams结构体封装参数，避免Solidity 16变量限制
+      operationId: createReceiptUsingPOST
+      parameters:
+      - name: authenticated
+        in: query
+        required: false
+        style: form
+        schema:
+          type: boolean
+      - name: authorities[0].authority
+        in: query
+        required: false
+        style: form
+        schema:
+          type: string
+      - name: credentials
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: details
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      - name: principal
+        in: query
+        required: false
+        style: form
+        schema:
+          type: object
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/创建仓单请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«仓单»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/warehouse-receipt/{receiptId}:
+    get:
+      tags:
+      - 仓单管理
+      summary: 获取仓单详情
+      description: 根据仓单ID查询详细信息
+      operationId: getReceiptUsingGET
+      parameters:
+      - name: receiptId
+        in: path
+        description: 仓单ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«仓单»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/warehouse-receipt/{receiptId}/release:
+    post:
+      tags:
+      - 仓单管理
+      summary: 释放仓单
+      description: 释放已质押的仓单
+      operationId: releaseReceiptUsingPOST
+      parameters:
+      - name: receiptId
+        in: path
+        description: 仓单ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/仓单释放请求'
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«仓单释放响应»'
+        '201':
+          description: Created
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+  /api/warehouse-receipt/{receiptId}/releases:
+    get:
+      tags:
+      - 仓单管理
+      summary: 获取仓单释放历史
+      description: 查询仓单的所有释放记录
+      operationId: getReleaseHistoryUsingGET
+      parameters:
+      - name: receiptId
+        in: path
+        description: 仓单ID
+        required: true
+        style: simple
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/Result«List«仓单释放记录»»'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not Found
+      security:
+      - Authorization:
+        - global
+components:
+  schemas:
+    ApiKeyRequest:
+      title: ApiKeyRequest
+      required:
+      - apiKey
+      type: object
+      properties:
+        apiKey:
+          type: string
+          description: API密钥
+    ChangePasswordRequest:
+      title: ChangePasswordRequest
+      required:
+      - newPassword
+      - oldPassword
+      type: object
+      properties:
+        newPassword:
+          type: string
+          description: 新密码
+        oldPassword:
+          type: string
+          description: 原密码
+    CreateUserRequest:
+      title: CreateUserRequest
+      required:
+      - password
+      - realName
+      - username
+      type: object
+      properties:
+        department:
+          type: string
+          description: 部门
+          example: 财务部
+        email:
+          type: string
+          description: 电子邮箱
+          example: zhangsan@example.com
+        enterpriseId:
+          type: integer
+          description: 所属企业ID
+          format: int64
+          example: 1
+        password:
+          type: string
+          description: 密码
+        phone:
+          type: string
+          description: 手机号码
+          example: '13800138000'
+        position:
+          type: string
+          description: 职位
+          example: 财务经理
+        realName:
+          type: string
+          description: 真实姓名
+          example: 张三
+        userType:
+          type: string
+          description: 用户类型
+          example: ENTERPRISE_USER
+          enum:
+          - ADMIN
+          - AUDITOR
+          - ENTERPRISE_USER
+          - OPERATOR
+        username:
+          type: string
+          description: 用户名
+          example: zhangsan
+    Enterprise:
+      title: Enterprise
+      required:
+      - address
+      - creditCode
+      - name
+      - role
+      type: object
+      properties:
+        address:
+          type: string
+          description: 区块链地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        creditCode:
+          type: string
+          description: 统一社会信用代码
+          example: 91110000MA001234XY
+        creditLimit:
+          type: number
+          description: 授信额度
+          format: bigdecimal
+          example: 1000000.0
+        creditRating:
+          type: integer
+          description: 信用评级(0-100)
+          format: int32
+          example: 75
+        enterpriseAddress:
+          type: string
+          description: 企业地址
+          example: 北京市朝阳区
+        name:
+          type: string
+          description: 企业名称
+          example: 供应商A
+        remarks:
+          type: string
+          description: 备注信息
+          example: 企业审核备注
+        role:
+          type: string
+          description: 企业角色
+          example: SUPPLIER
+          enum:
+          - CORE_ENTERPRISE
+          - FINANCIAL_INSTITUTION
+          - REGULATOR
+          - SUPPLIER
+        status:
+          type: string
+          description: 企业状态
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - BLACKLISTED
+          - PENDING
+          - SUSPENDED
+    EnterpriseLoginRequest:
+      title: EnterpriseLoginRequest
+      required:
+      - address
+      - password
+      type: object
+      properties:
+        address:
+          type: string
+          description: 企业区块链地址
+          example: '0x1234567890abcdef'
+        password:
+          type: string
+          description: 登录密码
+    FinanceRequest:
+      title: FinanceRequest
+      type: object
+      properties:
+        financeAmount:
+          type: number
+          format: bigdecimal
+        financeRate:
+          type: integer
+          format: int32
+        financierAddress:
+          type: string
+    GenerateCodeRequest:
+      title: GenerateCodeRequest
+      required:
+      - enterpriseId
+      type: object
+      properties:
+        daysValid:
+          type: integer
+          description: 有效期（天）
+          format: int32
+          example: 30
+        enterpriseId:
+          type: integer
+          description: 企业ID
+          format: int64
+          example: 1
+        maxUses:
+          type: integer
+          description: 最大使用次数
+          format: int32
+          example: 100
+        remarks:
+          type: string
+          description: 备注信息
+          example: 用于招聘财务人员
+    Pageable:
+      title: Pageable
+      type: object
+      properties:
+        offset:
+          type: integer
+          format: int64
+        pageNumber:
+          type: integer
+          format: int32
+        pageSize:
+          type: integer
+          format: int32
+        paged:
+          type: boolean
+        sort:
+          $ref: '#/components/schemas/Sort'
+        unpaged:
+          type: boolean
+    Page«Enterprise»:
+      title: Page«Enterprise»
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enterprise'
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: '#/components/schemas/Sort'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Page«User»:
+      title: Page«User»
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: '#/components/schemas/Sort'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Page«企业审核日志»:
+      title: Page«企业审核日志»
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/企业审核日志'
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: '#/components/schemas/Sort'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Page«审计日志»:
+      title: Page«审计日志»
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/审计日志'
+        empty:
+          type: boolean
+        first:
+          type: boolean
+        last:
+          type: boolean
+        number:
+          type: integer
+          format: int32
+        numberOfElements:
+          type: integer
+          format: int32
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        size:
+          type: integer
+          format: int32
+        sort:
+          $ref: '#/components/schemas/Sort'
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+          format: int32
+    Receivable:
+      title: Receivable
+      required:
+      - amount
+      - coreEnterpriseAddress
+      - dueDate
+      - issueDate
+      - receivableId
+      - supplierAddress
+      type: object
+      properties:
+        amount:
+          type: number
+          description: 应收金额
+          format: bigdecimal
+          example: 500000.0
+        coreEnterpriseAddress:
+          type: string
+          description: 核心企业地址
+          example: '0xabcdef1234567890'
+        currency:
+          type: string
+          description: 币种
+          example: CNY
+        currentHolder:
+          type: string
+          description: 当前持有人地址
+          example: '0x1234567890abcdef'
+        description:
+          type: string
+          description: 描述
+          example: 原材料采购款
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        financeAmount:
+          type: number
+          description: 融资金额
+          format: bigdecimal
+          example: 450000.0
+        financeDate:
+          type: string
+          description: 融资日期
+          format: date-time
+        financeRate:
+          type: integer
+          description: 融资利率(基点)
+          format: int32
+          example: 500
+        financierAddress:
+          type: string
+          description: 资金方地址
+          example: '0x567890abcdef1234'
+        issueDate:
+          type: string
+          description: 出票日期
+          format: date-time
+        receivableId:
+          type: string
+          description: 应收账款ID
+          example: REC20240113001
+        status:
+          type: string
+          description: 状态
+          example: CONFIRMED
+          enum:
+          - CANCELLED
+          - CONFIRMED
+          - CREATED
+          - DEFAULTED
+          - FINANCED
+          - REPAID
+        supplierAddress:
+          type: string
+          description: 供应商地址
+          example: '0x1234567890abcdef'
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef12'
+      description: 应收账款实体
+    ResetPasswordRequest:
+      title: ResetPasswordRequest
+      required:
+      - newPassword
+      type: object
+      properties:
+        newPassword:
+          type: string
+          description: 新密码
+    Result«Enterprise»:
+      title: Result«Enterprise»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Enterprise'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«Enterprise»»:
+      title: Result«List«Enterprise»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Enterprise'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«Map«string,object»»»:
+      title: Result«List«Map«string,object»»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              type: object
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«Receivable»»:
+      title: Result«List«Receivable»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Receivable'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«User»»:
+      title: Result«List«User»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«仓单释放记录»»:
+      title: Result«List«仓单释放记录»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/仓单释放记录'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«企业审核日志»»:
+      title: Result«List«企业审核日志»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/企业审核日志'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«审计日志»»:
+      title: Result«List«审计日志»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/审计日志'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«背书记录»»:
+      title: Result«List«背书记录»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/背书记录'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«贴现记录»»:
+      title: Result«List«贴现记录»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/贴现记录'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«还款记录»»:
+      title: Result«List«还款记录»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/还款记录'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«List«邀请码»»:
+      title: Result«List«邀请码»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/邀请码'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Map«string,long»»:
+      title: Result«Map«string,long»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Map«string,object»»:
+      title: Result«Map«string,object»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: object
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Map«string,string»»:
+      title: Result«Map«string,string»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: object
+          additionalProperties:
+            type: string
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Page«Enterprise»»:
+      title: Result«Page«Enterprise»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Page«Enterprise»'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Page«User»»:
+      title: Result«Page«User»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Page«User»'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Page«企业审核日志»»:
+      title: Result«Page«企业审核日志»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Page«企业审核日志»'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Page«审计日志»»:
+      title: Result«Page«审计日志»»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Page«审计日志»'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Receivable»:
+      title: Result«Receivable»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/Receivable'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«User»:
+      title: Result«User»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/User'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«Void»:
+      title: Result«Void»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«boolean»:
+      title: Result«boolean»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: boolean
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«long»:
+      title: Result«long»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: integer
+          format: int64
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«string»:
+      title: Result«string»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«仓单»:
+      title: Result«仓单»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/仓单'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«仓单释放响应»:
+      title: Result«仓单释放响应»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/仓单释放响应'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«企业用户信息»:
+      title: Result«企业用户信息»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/企业用户信息'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«审计日志»:
+      title: Result«审计日志»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/审计日志'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«审计日志统计»:
+      title: Result«审计日志统计»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/审计日志统计'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«批量审核结果»:
+      title: Result«批量审核结果»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/批量审核结果'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«用户企业信息»:
+      title: Result«用户企业信息»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/用户企业信息'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«票据»:
+      title: Result«票据»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/票据'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«票据背书响应»:
+      title: Result«票据背书响应»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/票据背书响应'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«票据贴现响应»:
+      title: Result«票据贴现响应»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/票据贴现响应'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«票据还款响应»:
+      title: Result«票据还款响应»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/票据还款响应'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    Result«邀请码»:
+      title: Result«邀请码»
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        data:
+          $ref: '#/components/schemas/邀请码'
+        message:
+          type: string
+        timestamp:
+          type: integer
+          format: int64
+    SetUserStatusRequest:
+      title: SetUserStatusRequest
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          type: string
+          description: 用户状态
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
+          - PENDING
+    Sort:
+      title: Sort
+      type: object
+      properties:
+        empty:
+          type: boolean
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+    UpdateUserRequest:
+      title: UpdateUserRequest
+      required:
+      - username
+      type: object
+      properties:
+        avatarUrl:
+          type: string
+          description: 头像URL
+        department:
+          type: string
+          description: 部门
+        email:
+          type: string
+          description: 电子邮箱
+        phone:
+          type: string
+          description: 手机号码
+        position:
+          type: string
+          description: 职位
+        realName:
+          type: string
+          description: 真实姓名
+        username:
+          type: string
+          description: 用户名
+    User:
+      title: User
+      required:
+      - status
+      - userType
+      - username
+      type: object
+      properties:
+        active:
+          type: boolean
+        avatarUrl:
+          type: string
+          description: 头像URL
+        department:
+          type: string
+          description: 部门
+          example: 财务部
+        disabled:
+          type: boolean
+        email:
+          type: string
+          description: 电子邮箱
+          example: zhangsan@example.com
+        enterpriseId:
+          type: integer
+          description: 所属企业ID
+          format: int64
+          example: 1
+        invitationCode:
+          type: string
+          description: 注册时使用的邀请码
+          example: INV2024011812345678
+        locked:
+          type: boolean
+        phone:
+          type: string
+          description: 手机号码
+          example: '13800138000'
+        position:
+          type: string
+          description: 职位
+          example: 财务经理
+        realName:
+          type: string
+          description: 真实姓名
+          example: 张三
+        registrationRemarks:
+          type: string
+          description: 注册备注信息
+          example: 用户注册申请备注
+        status:
+          type: string
+          description: 用户状态
+          enum:
+          - ACTIVE
+          - DISABLED
+          - LOCKED
+          - PENDING
+        userType:
+          type: string
+          description: 用户类型
+          enum:
+          - ADMIN
+          - AUDITOR
+          - ENTERPRISE_USER
+          - OPERATOR
+        username:
+          type: string
+          description: 用户名（登录账号）
+          example: zhangsan
+    UserInfo:
+      title: UserInfo
+      type: object
+      properties:
+        department:
+          type: string
+          description: 部门
+        email:
+          type: string
+          description: 邮箱
+        id:
+          type: integer
+          description: 用户ID
+          format: int64
+        loginCount:
+          type: integer
+          description: 登录次数
+          format: int32
+        phone:
+          type: string
+          description: 手机号
+        position:
+          type: string
+          description: 职位
+        realName:
+          type: string
+          description: 真实姓名
+        status:
+          type: string
+          description: 用户状态
+        userType:
+          type: string
+          description: 用户类型
+        username:
+          type: string
+          description: 用户名
+    UserLoginRequest:
+      title: UserLoginRequest
+      required:
+      - password
+      - username
+      type: object
+      properties:
+        password:
+          type: string
+          description: 登录密码
+        username:
+          type: string
+          description: 用户名
+          example: zhangsan
+    UserOperationStats:
+      title: UserOperationStats
+      type: object
+      properties:
+        operationCount:
+          type: integer
+          description: 操作次数
+          format: int64
+        userAddress:
+          type: string
+          description: 用户地址
+        userName:
+          type: string
+          description: 用户姓名
+    仓单:
+      title: 仓单
+      required:
+      - createdAt
+      - expiryDate
+      - goodsName
+      - ownerAddress
+      - quantity
+      - receiptId
+      - status
+      - storageDate
+      - totalPrice
+      - unit
+      - unitPrice
+      - warehouseAddress
+      type: object
+      properties:
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        expiryDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        financeAmount:
+          type: number
+          description: 融资金额
+          format: bigdecimal
+          example: 350000.0
+        financeDate:
+          type: string
+          description: 融资日期
+          format: date-time
+        financeRate:
+          type: integer
+          description: 融资利率（基点）
+          format: int32
+          example: 500
+        financialInstitution:
+          type: string
+          description: 金融机构地址
+          example: '0x9876543210987654321098765432109876543210'
+        goodsName:
+          type: string
+          description: 货物名称
+          example: 钢材
+        goodsType:
+          type: string
+          description: 货物类型
+          example: 螺纹钢
+        origin:
+          type: string
+          description: 产地
+          example: 上海
+        ownerAddress:
+          type: string
+          description: 所有者地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        pledgeAmount:
+          type: number
+          description: 质押金额
+          format: bigdecimal
+          example: 400000.0
+        quality:
+          type: string
+          description: 质量等级
+          example: 一级
+        quantity:
+          type: number
+          description: 数量
+          format: bigdecimal
+          example: 100.0
+        receiptId:
+          type: string
+          description: 仓单ID
+          example: receipt001
+        releaseDate:
+          type: string
+          description: 释放日期
+          format: date-time
+        status:
+          type: string
+          description: 仓单状态
+          example: CREATED
+          enum:
+          - CREATED
+          - EXPIRED
+          - FINANCED
+          - LIQUIDATED
+          - PLEDGED
+          - RELEASED
+          - VERIFIED
+        storageDate:
+          type: string
+          description: 入库日期
+          format: date-time
+        totalPrice:
+          type: number
+          description: 总价
+          format: bigdecimal
+          example: 500000.0
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+        unit:
+          type: string
+          description: 单位
+          example: 吨
+        unitPrice:
+          type: number
+          description: 单价
+          format: bigdecimal
+          example: 5000.0
+        updatedAt:
+          type: string
+          description: 更新时间
+          format: date-time
+        warehouseAddress:
+          type: string
+          description: 仓库地址
+          example: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+        warehouseLocation:
+          type: string
+          description: 仓库位置
+          example: 上海市宝山区仓库A区01号货架
+      description: 仓单信息实体
+    仓单释放响应:
+      title: 仓单释放响应
+      type: object
+      properties:
+        financeAmount:
+          type: number
+          description: 融资金额
+          format: bigdecimal
+        financeDate:
+          type: string
+          description: 融资日期
+          format: date-time
+        financeRate:
+          type: integer
+          description: 融资利率
+          format: int32
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+        id:
+          type: integer
+          description: 释放记录ID
+          format: int64
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+        ownerAddress:
+          type: string
+          description: 所有者地址
+        pledgeAmount:
+          type: number
+          description: 质押金额
+          format: bigdecimal
+        receiptId:
+          type: string
+          description: 仓单ID
+        releaseDate:
+          type: string
+          description: 释放日期
+          format: date-time
+        releaseType:
+          type: string
+          description: 释放类型
+          enum:
+          - FULL_REPAYMENT
+          - LIQUIDATION
+          - MANUAL
+          - MATURITY
+          - PARTIAL_REPAYMENT
+        remark:
+          type: string
+          description: 释放备注
+        repaymentAmount:
+          type: number
+          description: 还款金额
+          format: bigdecimal
+        txHash:
+          type: string
+          description: 区块链交易哈希
+      description: 仓单释放操作的结果
+    仓单释放记录:
+      title: 仓单释放记录
+      required:
+      - createdAt
+      - ownerAddress
+      - receiptId
+      - releaseDate
+      - releaseType
+      type: object
+      properties:
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        financeAmount:
+          type: number
+          description: 融资金额
+          format: bigdecimal
+          example: 350000.0
+        financeDate:
+          type: string
+          description: 融资日期
+          format: date-time
+        financeRate:
+          type: integer
+          description: 融资利率（基点）
+          format: int32
+          example: 500
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+          example: '0x9876543210987654321098765432109876543210'
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+          example: 5000.0
+        ownerAddress:
+          type: string
+          description: 仓单所有者地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        pledgeAmount:
+          type: number
+          description: 质押金额
+          format: bigdecimal
+          example: 400000.0
+        receiptId:
+          type: string
+          description: 仓单ID
+          example: receipt001
+        releaseDate:
+          type: string
+          description: 释放日期
+          format: date-time
+        releaseType:
+          type: string
+          description: 释放类型
+          example: FULL_REPAYMENT
+          enum:
+          - FULL_REPAYMENT
+          - LIQUIDATION
+          - MANUAL
+          - MATURITY
+          - PARTIAL_REPAYMENT
+        remark:
+          type: string
+          description: 释放备注
+          example: 全额还款后释放仓单
+        repaymentAmount:
+          type: number
+          description: 还款金额
+          format: bigdecimal
+          example: 355000.0
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+      description: 仓单质押释放操作记录实体
+    仓单释放请求:
+      title: 仓单释放请求
+      required:
+      - releaseType
+      type: object
+      properties:
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+          example: 50000.0
+        releaseType:
+          type: string
+          description: 释放类型
+          example: FULL_REPAYMENT
+          enum:
+          - FULL_REPAYMENT
+          - LIQUIDATION
+          - MANUAL
+          - MATURITY
+          - PARTIAL_REPAYMENT
+        remark:
+          type: string
+          description: 释放备注
+          example: 全额还款，解除质押
+        repaymentAmount:
+          type: number
+          description: 还款金额（全额还款时可选）
+          format: bigdecimal
+          example: 1000000.0
+      description: 用于仓单质押释放的请求参数
+    企业审核日志:
+      title: 企业审核日志
+      required:
+      - action
+      - auditTime
+      - auditor
+      - enterpriseAddress
+      type: object
+      properties:
+        action:
+          type: string
+          description: 审核动作
+          enum:
+          - ACTIVATE
+          - APPROVE
+          - BLACKLIST
+          - REJECT
+          - SUSPEND
+        auditTime:
+          type: string
+          description: 审核时间
+          format: date-time
+        auditor:
+          type: string
+          description: 审核人用户名
+        enterpriseAddress:
+          type: string
+          description: 企业区块链地址
+        enterpriseName:
+          type: string
+          description: 企业名称
+        ipAddress:
+          type: string
+          description: 审核人IP地址
+        reason:
+          type: string
+          description: 审核/拒绝理由
+        remarks:
+          type: string
+          description: 备注信息
+        txHash:
+          type: string
+          description: 区块链交易哈希
+      description: 企业注册审核操作记录实体
+    企业用户信息:
+      title: 企业用户信息
+      type: object
+      properties:
+        address:
+          type: string
+          description: 企业地址
+        creditCode:
+          type: string
+          description: 统一社会信用代码
+        creditLimit:
+          type: string
+          description: 授信额度
+        creditRating:
+          type: integer
+          description: 信用评级
+          format: int32
+        enterpriseAddress:
+          type: string
+          description: 企业地址
+        enterpriseId:
+          type: integer
+          description: 企业ID
+          format: int64
+        name:
+          type: string
+          description: 企业名称
+        registeredAt:
+          type: string
+          description: 注册时间
+        role:
+          type: string
+          description: 企业角色
+        status:
+          type: string
+          description: 企业状态
+        userCount:
+          type: integer
+          description: 用户数量
+          format: int32
+        users:
+          type: array
+          description: 用户列表
+          items:
+            $ref: '#/components/schemas/UserInfo'
+      description: 企业及其所有用户的详细信息
+    创建仓单请求:
+      title: 创建仓单请求
+      required:
+      - expiryDate
+      - goods
+      - receiptId
+      - storageDate
+      - warehouseAddress
+      - warehouseLocation
+      type: object
+      properties:
+        expiryDate:
+          type: string
+          description: 过期日期
+          format: date-time
+        goods:
+          description: 货物信息
+          $ref: '#/components/schemas/货物信息'
+        receiptId:
+          type: string
+          description: 仓单ID
+          example: WR20240113001
+        storageDate:
+          type: string
+          description: 入库日期
+          format: date-time
+        warehouseAddress:
+          type: string
+          description: 仓库地址
+          example: '0x567890abcdef1234'
+        warehouseLocation:
+          type: string
+          description: 仓库物理位置
+          example: 上海市浦东新区XX仓库
+      description: 用于创建仓单的请求参数
+    创建应收账款请求:
+      title: 创建应收账款请求
+      required:
+      - amount
+      - coreEnterpriseAddress
+      - dueDate
+      - issueDate
+      - receivableId
+      type: object
+      properties:
+        amount:
+          type: number
+          description: 应收金额
+          format: bigdecimal
+          example: 500000.0
+        coreEnterpriseAddress:
+          type: string
+          description: 核心企业地址
+          example: '0xabcdef1234567890'
+        currency:
+          type: string
+          description: 币种
+          example: CNY
+        description:
+          type: string
+          description: 描述
+          example: 原材料采购款
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        issueDate:
+          type: string
+          description: 出票日期
+          format: date-time
+        receivableId:
+          type: string
+          description: 应收账款ID
+          example: REC20240113001
+      description: 用于创建应收账款的请求参数
+    审计日志:
+      title: 审计日志
+      required:
+      - actionDesc
+      - actionType
+      - createdAt
+      - isSuccess
+      - module
+      type: object
+      properties:
+        actionDesc:
+          type: string
+          description: 操作描述
+          example: 创建票据
+        actionType:
+          type: string
+          description: 操作类型
+          example: CREATE
+        changedFields:
+          type: string
+          description: 变更的字段
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        duration:
+          type: integer
+          description: 操作时长（毫秒）
+          format: int64
+          example: 150
+        entityId:
+          type: string
+          description: 实体ID
+          example: bill001
+        entityType:
+          type: string
+          description: 实体类型
+          example: Bill
+        errorMessage:
+          type: string
+          description: 错误信息
+        isSuccess:
+          type: boolean
+          description: 操作是否成功
+          example: true
+        module:
+          type: string
+          description: 操作模块
+          example: BILL
+        newValue:
+          type: string
+          description: 操作后的数据
+        oldValue:
+          type: string
+          description: 操作前的数据
+        requestIp:
+          type: string
+          description: 请求IP地址
+          example: 192.168.1.100
+        requestMethod:
+          type: string
+          description: 请求方法
+          example: POST
+        requestUrl:
+          type: string
+          description: 请求URL
+          example: /api/bill/create
+        result:
+          type: string
+          description: 操作结果
+          example: SUCCESS
+        tenantId:
+          type: string
+          description: 租户ID
+          example: tenant001
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+        userAddress:
+          type: string
+          description: 操作人地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        userAgent:
+          type: string
+          description: 用户代理
+          example: Mozilla/5.0...
+        userName:
+          type: string
+          description: 操作人姓名
+          example: 张三
+      description: 系统操作审计日志实体
+    审计日志统计:
+      title: 审计日志统计
+      type: object
+      properties:
+        actionTypeStats:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: 各操作类型统计
+        averageDuration:
+          type: integer
+          description: 平均操作时长（毫秒）
+          format: int64
+        endTime:
+          type: string
+          description: 统计结束时间
+          format: date-time
+        failureCount:
+          type: integer
+          description: 失败操作次数
+          format: int64
+        moduleStats:
+          type: object
+          additionalProperties:
+            type: integer
+            format: int64
+          description: 各模块操作统计
+        startTime:
+          type: string
+          description: 统计开始时间
+          format: date-time
+        successCount:
+          type: integer
+          description: 成功操作次数
+          format: int64
+        successRate:
+          type: number
+          description: 成功率（%）
+          format: double
+        topUsers:
+          type: array
+          description: 用户操作排名（前10）
+          items:
+            $ref: '#/components/schemas/UserOperationStats'
+        totalOperations:
+          type: integer
+          description: 总操作次数
+          format: int64
+      description: 审计日志的统计信息
+    开票请求:
+      title: 开票请求
+      required:
+      - acceptorAddress
+      - amount
+      - beneficiaryAddress
+      - billId
+      - billType
+      - dueDate
+      - issueDate
+      type: object
+      properties:
+        acceptorAddress:
+          type: string
+          description: 承兑人地址
+          example: '0xabcdef1234567890'
+        amount:
+          type: number
+          description: 票面金额
+          format: bigdecimal
+          example: 1000000.0
+        beneficiaryAddress:
+          type: string
+          description: 受益人地址
+          example: '0x1234567890abcdef'
+        billId:
+          type: string
+          description: 票据ID
+          example: BILL20240113001
+        billType:
+          type: string
+          description: 票据类型
+          example: COMMERCIAL_BILL
+          enum:
+          - BANK_BILL
+          - COMMERCIAL_BILL
+          - LETTER_OF_CREDIT
+        currency:
+          type: string
+          description: 币种
+          example: CNY
+        description:
+          type: string
+          description: 描述
+          example: 货物采购款
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        issueDate:
+          type: string
+          description: 出票日期
+          format: date-time
+      description: 用于创建票据的请求参数
+    批量审核结果:
+      title: 批量审核结果
+      required:
+      - auditTime
+      - auditor
+      - failCount
+      - successCount
+      - totalCount
+      type: object
+      properties:
+        auditTime:
+          type: string
+          description: 审核时间
+          format: date-time
+        auditor:
+          type: string
+          description: 审核人
+        errorMessages:
+          type: object
+          additionalProperties:
+            type: string
+          description: 错误信息映射（地址 -> 错误信息）
+        failCount:
+          type: integer
+          description: 失败数量
+          format: int32
+        failedAddresses:
+          type: array
+          description: 失败的企业地址列表
+          items:
+            type: string
+        successCount:
+          type: integer
+          description: 成功数量
+          format: int32
+        successRate:
+          type: number
+          description: 成功率（%）
+          format: double
+        totalCount:
+          type: integer
+          description: 总数
+          format: int32
+      description: 批量审核操作的执行结果
+    用户企业信息:
+      title: 用户企业信息
+      type: object
+      properties:
+        creditRating:
+          type: integer
+          description: 信用评级
+          format: int32
+        department:
+          type: string
+          description: 部门
+        email:
+          type: string
+          description: 邮箱
+        enterpriseAddress:
+          type: string
+          description: 企业地址
+        enterpriseId:
+          type: integer
+          description: 企业ID
+          format: int64
+        enterpriseName:
+          type: string
+          description: 企业名称
+        enterpriseRole:
+          type: string
+          description: 企业角色
+        enterpriseStatus:
+          type: string
+          description: 企业状态
+        lastLoginTime:
+          type: string
+          description: 最后登录时间
+        loginCount:
+          type: integer
+          description: 登录次数
+          format: int32
+        phone:
+          type: string
+          description: 手机号
+        position:
+          type: string
+          description: 职位
+        realName:
+          type: string
+          description: 真实姓名
+        status:
+          type: string
+          description: 用户状态
+        userId:
+          type: integer
+          description: 用户ID
+          format: int64
+        userType:
+          type: string
+          description: 用户类型
+        username:
+          type: string
+          description: 用户名
+      description: 用户及其所属企业的详细信息
+    用户注册请求:
+      title: 用户注册请求
+      required:
+      - invitationCode
+      - password
+      - realName
+      - username
+      type: object
+      properties:
+        department:
+          maxLength: 100
+          minLength: 0
+          type: string
+          description: 部门
+          example: 财务部
+        email:
+          type: string
+          description: 电子邮箱
+          example: zhangsan@example.com
+        invitationCode:
+          type: string
+          description: 企业邀请码
+          example: INV2024011812345678
+        password:
+          maxLength: 100
+          minLength: 6
+          type: string
+          description: 登录密码
+          example: password123
+        phone:
+          pattern: ^1[3-9]\d{9}$
+          type: string
+          description: 手机号码
+          example: '13800138000'
+        position:
+          maxLength: 100
+          minLength: 0
+          type: string
+          description: 职位
+          example: 财务经理
+        realName:
+          maxLength: 100
+          minLength: 0
+          type: string
+          description: 真实姓名
+          example: 张三
+        remarks:
+          maxLength: 500
+          minLength: 0
+          type: string
+          description: 注册备注信息
+          example: 希望能加入贵公司
+        username:
+          maxLength: 50
+          minLength: 3
+          type: string
+          description: 用户名（登录账号）
+          example: zhangsan
+      description: 用户使用邀请码进行注册的请求参数
+    票据:
+      title: 票据
+      required:
+      - acceptorAddress
+      - amount
+      - beneficiaryAddress
+      - billId
+      - billType
+      - createdAt
+      - currentHolder
+      - dueDate
+      - issueDate
+      - issuerAddress
+      - status
+      type: object
+      properties:
+        acceptorAddress:
+          type: string
+          description: 承兑人地址
+          example: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+        amount:
+          type: number
+          description: 票据金额
+          format: bigdecimal
+          example: 100000.0
+        beneficiaryAddress:
+          type: string
+          description: 收款人地址
+          example: '0x9876543210987654321098765432109876543210'
+        billId:
+          type: string
+          description: 票据ID
+          example: bill001
+        billType:
+          type: string
+          description: 票据类型
+          example: COMMERCIAL_BILL
+          enum:
+          - BANK_BILL
+          - COMMERCIAL_BILL
+          - LETTER_OF_CREDIT
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        currency:
+          type: string
+          description: 货币类型
+          example: CNY
+        currentHolder:
+          type: string
+          description: 当前持票人地址
+          example: '0x9876543210987654321098765432109876543210'
+        description:
+          type: string
+          description: 票据描述
+          example: 购买原材料的商业承兑汇票
+        discountAmount:
+          type: number
+          description: 贴现金额
+          format: bigdecimal
+          example: 95000.0
+        discountDate:
+          type: string
+          description: 贴现日期
+          format: date-time
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        endorsementCount:
+          type: integer
+          description: 背书次数
+          format: int32
+          example: 2
+        financialInstitutionAddress:
+          type: string
+          description: 贴现机构地址
+          example: '0x1111222233334444555566667777888899990000'
+        issueDate:
+          type: string
+          description: 出票日期
+          format: date-time
+        issuerAddress:
+          type: string
+          description: 出票人地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        paymentDate:
+          type: string
+          description: 付款日期
+          format: date-time
+        status:
+          type: string
+          description: 票据状态
+          example: ISSUED
+          enum:
+          - ACCEPTED
+          - CANCELLED
+          - DISCOUNTED
+          - DISHONORED
+          - ENDORSED
+          - ISSUED
+          - PAID
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+        updatedAt:
+          type: string
+          description: 更新时间
+          format: date-time
+      description: 票据信息实体
+    票据背书响应:
+      title: 票据背书响应
+      type: object
+      properties:
+        billId:
+          type: string
+          description: 票据ID
+        endorseeAddress:
+          type: string
+          description: 被背书人地址
+        endorsementAmount:
+          type: integer
+          description: 背书金额（分）
+          format: int64
+        endorsementDate:
+          type: string
+          description: 背书日期
+          format: date-time
+        endorsementSequence:
+          type: integer
+          description: 背书序号
+          format: int32
+        endorsementType:
+          type: string
+          description: 背书类型
+          enum:
+          - DISCOUNT
+          - NORMAL
+          - PLEDGE
+        endorserAddress:
+          type: string
+          description: 背书人地址
+        id:
+          type: integer
+          description: 背书记录ID
+          format: int64
+        remark:
+          type: string
+          description: 背书备注
+        txHash:
+          type: string
+          description: 区块链交易哈希
+      description: 票据背书操作的结果
+    票据背书请求:
+      title: 票据背书请求
+      required:
+      - endorseeAddress
+      - endorsementType
+      type: object
+      properties:
+        endorseeAddress:
+          type: string
+          description: 被背书人地址（新持票人）
+          example: '0x1234567890abcdef'
+        endorsementAmount:
+          type: integer
+          description: 背书金额（分，部分背书时使用，null表示全额背书）
+          format: int64
+          example: 100000000
+        endorsementType:
+          type: string
+          description: 背书类型
+          example: NORMAL
+          enum:
+          - DISCOUNT
+          - NORMAL
+          - PLEDGE
+        remark:
+          type: string
+          description: 背书备注
+          example: 转让给XX公司
+      description: 用于背书转让票据的请求参数
+    票据贴现响应:
+      title: 票据贴现响应
+      type: object
+      properties:
+        billAmount:
+          type: number
+          description: 票面金额
+          format: bigdecimal
+        billId:
+          type: string
+          description: 票据ID
+        discountAmount:
+          type: number
+          description: 贴现金额（实际支付）
+          format: bigdecimal
+        discountDate:
+          type: string
+          description: 贴现日期
+          format: date-time
+        discountDays:
+          type: integer
+          description: 贴现天数
+          format: int32
+        discountInterest:
+          type: number
+          description: 贴现利息
+          format: bigdecimal
+        discountRate:
+          type: number
+          description: 贴现率（%）
+          format: bigdecimal
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+        holderAddress:
+          type: string
+          description: 持票人地址
+        id:
+          type: integer
+          description: 贴现记录ID
+          format: int64
+        maturityDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        remark:
+          type: string
+          description: 贴现备注
+        status:
+          type: string
+          description: 贴现状态
+          enum:
+          - ACTIVE
+          - CANCELLED
+          - MATURED
+          - REPAID
+        txHash:
+          type: string
+          description: 区块链交易哈希
+      description: 票据贴现操作的结果
+    票据贴现请求:
+      title: 票据贴现请求
+      required:
+      - discountAmount
+      - discountRate
+      - financialInstitutionAddress
+      type: object
+      properties:
+        discountAmount:
+          minimum: 0.01
+          exclusiveMinimum: false
+          type: number
+          description: 贴现金额（元）
+          format: bigdecimal
+          example: 980000.0
+        discountRate:
+          minimum: 0.0001
+          exclusiveMinimum: false
+          type: number
+          description: 贴现率（百分比，如 5.5 表示 5.5%）
+          format: bigdecimal
+          example: 5.5
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+          example: '0x1234567890abcdef'
+        remark:
+          type: string
+          description: 贴现备注
+          example: 流动性贴现
+      description: 用于票据贴现的请求参数
+    票据还款响应:
+      title: 票据还款响应
+      type: object
+      properties:
+        billAmount:
+          type: number
+          description: 票面金额
+          format: bigdecimal
+        billId:
+          type: string
+          description: 票据ID
+        discountAmount:
+          type: number
+          description: 贴现金额
+          format: bigdecimal
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+        id:
+          type: integer
+          description: 还款记录ID
+          format: int64
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+        overdueDays:
+          type: integer
+          description: 逾期天数
+          format: int32
+        payerAddress:
+          type: string
+          description: 还款人地址
+        paymentAmount:
+          type: number
+          description: 还款金额
+          format: bigdecimal
+        paymentDate:
+          type: string
+          description: 还款日期
+          format: date-time
+        paymentType:
+          type: string
+          description: 还款类型
+          enum:
+          - EARLY_PAYMENT
+          - FULL_PAYMENT
+          - MATURITY_PAYMENT
+          - OVERDUE_PAYMENT
+          - PARTIAL_PAYMENT
+        penaltyInterestAmount:
+          type: number
+          description: 逾期利息
+          format: bigdecimal
+        principalAmount:
+          type: number
+          description: 本金金额
+          format: bigdecimal
+        remark:
+          type: string
+          description: 还款备注
+        status:
+          type: string
+          description: 还款状态
+          enum:
+          - CANCELLED
+          - COMPLETED
+          - FAILED
+          - PENDING
+        txHash:
+          type: string
+          description: 区块链交易哈希
+      description: 票据还款操作的结果
+    票据还款请求:
+      title: 票据还款请求
+      required:
+      - paymentAmount
+      - paymentType
+      type: object
+      properties:
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+          example: 50000.0
+        paymentAmount:
+          type: number
+          description: 还款金额
+          format: bigdecimal
+          example: 1000000.0
+        paymentType:
+          type: string
+          description: 还款类型
+          example: FULL_PAYMENT
+          enum:
+          - EARLY_PAYMENT
+          - FULL_PAYMENT
+          - MATURITY_PAYMENT
+          - OVERDUE_PAYMENT
+          - PARTIAL_PAYMENT
+        penaltyInterestAmount:
+          type: number
+          description: 逾期利息金额
+          format: bigdecimal
+          example: 10000.0
+        remark:
+          type: string
+          description: 还款备注
+          example: 全额还款
+      description: 用于贴现票据还款的请求参数
+    背书记录:
+      title: 背书记录
+      required:
+      - billId
+      - createdAt
+      - endorseeAddress
+      - endorsementDate
+      - endorsementType
+      - endorserAddress
+      type: object
+      properties:
+        billId:
+          type: string
+          description: 票据ID
+          example: bill001
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        endorseeAddress:
+          type: string
+          description: 被背书人地址
+          example: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+        endorsementAmount:
+          type: integer
+          description: 背书金额
+          format: int64
+        endorsementDate:
+          type: string
+          description: 背书日期
+          format: date-time
+        endorsementSequence:
+          type: integer
+          description: 背书序号
+          format: int32
+          example: 1
+        endorsementType:
+          type: string
+          description: 背书类型
+          example: NORMAL
+          enum:
+          - DISCOUNT
+          - NORMAL
+          - PLEDGE
+        endorserAddress:
+          type: string
+          description: 背书人地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        remark:
+          type: string
+          description: 背书备注
+          example: 转让给供应商A
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+      description: 票据背书转让记录实体
+    货物信息:
+      title: 货物信息
+      required:
+      - goodsName
+      - quantity
+      - totalPrice
+      - unit
+      - unitPrice
+      type: object
+      properties:
+        goodsName:
+          type: string
+          description: 货物名称
+          example: 钢材
+        goodsType:
+          type: string
+          description: 货物类型
+          example: 建材
+        origin:
+          type: string
+          description: 产地
+          example: 上海
+        quality:
+          type: string
+          description: 质量等级
+          example: 一级
+        quantity:
+          type: number
+          description: 数量
+          format: bigdecimal
+          example: 100.0
+        totalPrice:
+          type: number
+          description: 总价（分）
+          format: bigdecimal
+          example: 500000.0
+        unit:
+          type: string
+          description: 单位
+          example: 吨
+        unitPrice:
+          type: number
+          description: 单价（分）
+          format: bigdecimal
+          example: 5000.0
+      description: 仓单货物的详细信息
+    贴现记录:
+      title: 贴现记录
+      required:
+      - billAmount
+      - billId
+      - createdAt
+      - discountAmount
+      - discountDate
+      - discountRate
+      - financialInstitutionAddress
+      - holderAddress
+      - maturityDate
+      - status
+      type: object
+      properties:
+        billAmount:
+          type: number
+          description: 票据票面金额
+          format: bigdecimal
+          example: 100000.0
+        billId:
+          type: string
+          description: 票据ID
+          example: bill001
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        discountAmount:
+          type: number
+          description: 贴现金额（实际支付）
+          format: bigdecimal
+          example: 95000.0
+        discountDate:
+          type: string
+          description: 贴现日期
+          format: date-time
+        discountDays:
+          type: integer
+          description: 贴现天数
+          format: int32
+          example: 150
+        discountInterest:
+          type: number
+          description: 贴现利息
+          format: bigdecimal
+          example: 5000.0
+        discountRate:
+          type: number
+          description: 贴现率（百分比）
+          format: bigdecimal
+          example: 5.5
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+          example: '0x9876543210987654321098765432109876543210'
+        holderAddress:
+          type: string
+          description: 贴现申请人地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        maturityDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        remark:
+          type: string
+          description: 贴现备注
+          example: 提前贴现用于资金周转
+        status:
+          type: string
+          description: 贴现状态
+          example: ACTIVE
+          enum:
+          - ACTIVE
+          - CANCELLED
+          - MATURED
+          - REPAID
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+      description: 票据贴现操作记录实体
+    还款记录:
+      title: 还款记录
+      required:
+      - billAmount
+      - billId
+      - createdAt
+      - dueDate
+      - financialInstitutionAddress
+      - payerAddress
+      - paymentAmount
+      - paymentDate
+      - paymentType
+      - status
+      type: object
+      properties:
+        billAmount:
+          type: number
+          description: 票据票面金额
+          format: bigdecimal
+          example: 100000.0
+        billId:
+          type: string
+          description: 票据ID
+          example: bill001
+        createdAt:
+          type: string
+          description: 创建时间
+          format: date-time
+        discountAmount:
+          type: number
+          description: 贴现金额
+          format: bigdecimal
+          example: 95000.0
+        dueDate:
+          type: string
+          description: 到期日期
+          format: date-time
+        financialInstitutionAddress:
+          type: string
+          description: 金融机构地址
+          example: '0x9876543210987654321098765432109876543210'
+        interestAmount:
+          type: number
+          description: 利息金额
+          format: bigdecimal
+          example: 3000.0
+        overdueDays:
+          type: integer
+          description: 逾期天数
+          format: int32
+          example: 0
+        payerAddress:
+          type: string
+          description: 还款人地址
+          example: '0x1234567890abcdef1234567890abcdef12345678'
+        paymentAmount:
+          type: number
+          description: 还款金额
+          format: bigdecimal
+          example: 98000.0
+        paymentDate:
+          type: string
+          description: 还款日期
+          format: date-time
+        paymentType:
+          type: string
+          description: 还款类型
+          example: MATURITY_PAYMENT
+          enum:
+          - EARLY_PAYMENT
+          - FULL_PAYMENT
+          - MATURITY_PAYMENT
+          - OVERDUE_PAYMENT
+          - PARTIAL_PAYMENT
+        penaltyInterestAmount:
+          type: number
+          description: 逾期利息
+          format: bigdecimal
+          example: 0.0
+        principalAmount:
+          type: number
+          description: 正常还款金额
+          format: bigdecimal
+          example: 95000.0
+        remark:
+          type: string
+          description: 还款备注
+          example: 到期自动还款
+        status:
+          type: string
+          description: 还款状态
+          example: COMPLETED
+          enum:
+          - CANCELLED
+          - COMPLETED
+          - FAILED
+          - PENDING
+        txHash:
+          type: string
+          description: 区块链交易哈希
+          example: '0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+      description: 票据还款操作记录实体
+    邀请码:
+      title: 邀请码
+      required:
+      - code
+      - createdBy
+      - enterpriseId
+      - status
+      type: object
+      properties:
+        code:
+          type: string
+          description: 邀请码（唯一标识）
+          example: INV2024011812345678
+        createdBy:
+          type: string
+          description: 创建人
+          example: admin
+        enterpriseId:
+          type: integer
+          description: 所属企业ID
+          format: int64
+          example: 1
+        enterpriseName:
+          type: string
+          description: 企业名称（冗余字段）
+          example: 供应商A
+        expired:
+          type: boolean
+        expiresAt:
+          type: string
+          description: 过期时间
+          format: date-time
+        maxUses:
+          type: integer
+          description: 最大使用次数
+          format: int32
+          example: 100
+        maxUsesReached:
+          type: boolean
+        remarks:
+          type: string
+          description: 备注信息
+          example: 用于招聘财务人员
+        status:
+          type: string
+          description: 邀请码状态
+          enum:
+          - ACTIVE
+          - DISABLED
+          - EXPIRED
+        usedCount:
+          type: integer
+          description: 已使用次数
+          format: int32
+          example: 5
+        valid:
+          type: boolean
+      description: 企业邀请用户注册的邀请码实体
+  securitySchemes:
+    Authorization:
+      type: apiKey
+      name: Authorization
+      in: header
