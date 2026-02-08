@@ -1,9 +1,10 @@
 package com.fisco.app.aspect;
 
+import com.fisco.app.entity.system.AuditLog;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fisco.app.annotation.Audited;
-import com.fisco.app.entity.AuditLog;
-import com.fisco.app.repository.AuditLogRepository;
+import com.fisco.app.repository.system.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -21,6 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+
 
 /**
  * 审计日志切面

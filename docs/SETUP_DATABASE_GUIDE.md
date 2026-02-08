@@ -93,7 +93,7 @@ mysql -h 127.0.0.1 -u root -p'MySQL@2024' -e "SELECT 1;"
 配置完成后，使用启动脚本启动应用：
 
 ```bash
-./start.sh
+./scripts/start.sh
 ```
 
 或者直接使用Maven：
@@ -158,5 +158,5 @@ JWT_SECRET=$(openssl rand -base64 64)
 
 ```bash
 cp .env.production .env
-./start.sh
+./scripts/start.sh
 ```

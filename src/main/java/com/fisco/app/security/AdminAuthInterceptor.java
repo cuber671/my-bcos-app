@@ -1,19 +1,21 @@
 package com.fisco.app.security;
+import java.io.IOException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fisco.app.entity.Admin;
-import com.fisco.app.service.AdminService;
-import com.fisco.app.vo.Result;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fisco.app.entity.user.Admin;
+import com.fisco.app.service.user.AdminService;
+import com.fisco.app.vo.Result;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 管理员权限拦截器

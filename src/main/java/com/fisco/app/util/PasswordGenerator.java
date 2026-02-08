@@ -1,6 +1,6 @@
 package com.fisco.app.util;
-
 import com.fisco.app.security.PasswordUtil;
+
 
 /**
  * 密码生成工具

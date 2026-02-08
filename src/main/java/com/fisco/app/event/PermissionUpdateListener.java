@@ -1,11 +1,12 @@
 package com.fisco.app.event;
-
-import com.fisco.app.security.PermissionCacheService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+
+import com.fisco.app.security.PermissionCacheService;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 权限更新事件监听器

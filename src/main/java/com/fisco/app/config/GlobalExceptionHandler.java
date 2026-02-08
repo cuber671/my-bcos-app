@@ -1,7 +1,7 @@
 package com.fisco.app.config;
+import com.fisco.app.vo.Result;
 
 import com.fisco.app.exception.BusinessException;
-import com.fisco.app.vo.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;

@@ -1,12 +1,14 @@
 package com.fisco.app.config;
 
-import com.fisco.app.security.AdminAuthInterceptor;
-import com.fisco.app.security.EnterpriseAuthInterceptor;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.fisco.app.security.AdminAuthInterceptor;
+import com.fisco.app.security.EnterpriseAuthInterceptor;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * Web MVC配置类

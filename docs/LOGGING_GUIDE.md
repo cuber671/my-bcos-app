@@ -82,7 +82,7 @@
 
 启动应用时，日志会实时输出到控制台：
 ```bash
-./start.sh
+./scripts/start.sh
 ```
 
 ## 五、查看日志

@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
+
 /**
  * 智能合约部署工具类
  */
@@ -172,7 +173,6 @@ public class ContractDeployer {
             throw new RuntimeException("批量部署失败", e);
         }
     }
-
 
     /**
      * 部署结果

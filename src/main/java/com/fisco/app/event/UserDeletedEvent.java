@@ -1,5 +1,4 @@
 package com.fisco.app.event;
-
 import lombok.Getter;
 
 /**

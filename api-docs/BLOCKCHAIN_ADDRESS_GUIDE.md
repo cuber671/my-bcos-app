@@ -75,7 +75,7 @@ curl http://localhost:8080/api/account \
 #### 启动控制台
 ```bash
 cd /home/llm_rca/fisco/console
-bash start.sh
+bash scripts/start.sh
 ```
 
 #### 在控制台中执行命令

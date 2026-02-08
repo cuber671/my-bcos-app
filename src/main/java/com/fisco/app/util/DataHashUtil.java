@@ -1,9 +1,10 @@
 package com.fisco.app.util;
 
-import com.fisco.app.entity.Bill;
-import com.fisco.app.entity.ElectronicWarehouseReceipt;
-import com.fisco.app.entity.Receivable;
-import com.fisco.app.entity.WarehouseReceipt;
+import com.fisco.app.entity.bill.Bill;
+
+
+import com.fisco.app.entity.receivable.Receivable;
+import com.fisco.app.entity.warehouse.WarehouseReceipt;
 import lombok.extern.slf4j.Slf4j;
 import org.fisco.bcos.sdk.v3.crypto.CryptoSuite;
 import org.fisco.bcos.sdk.v3.model.CryptoType;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+import com.fisco.app.entity.warehouse.ElectronicWarehouseReceipt;
 
 /**
  * 数据哈希工具类

@@ -5,6 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+
 /**
  * 要求企业访问权限注解
  * 用于方法级别，确保用户只能访问自己企业的数据
