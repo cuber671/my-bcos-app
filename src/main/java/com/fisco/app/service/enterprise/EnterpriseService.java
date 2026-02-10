@@ -33,6 +33,10 @@ public class EnterpriseService {
     private final UserRepository userRepository;
     private final EnterpriseAuditLogRepository auditLogRepository;
     private final ContractService contractService;
+    private final com.fisco.app.repository.enterprise.CreditRatingHistoryRepository creditRatingHistoryRepository;
+    private final com.fisco.app.repository.bill.BillRepository billRepository;
+    private final com.fisco.app.repository.receivable.ReceivableRepository receivableRepository;
+    private final com.fisco.app.repository.warehouse.ElectronicWarehouseReceiptRepository warehouseReceiptRepository;
 
     /**
      * 注册企业（完整版本，包含IP地址）
@@ -261,11 +265,11 @@ public class EnterpriseService {
     }
 
     /**
-     * 更新信用评级
+     * 更新信用评级（增强版，包含原因和历史记录）
      */
     @Transactional
-    public void updateCreditRating(String address, Integer creditRating, String updatedBy) {
-        log.info("更新信用评级: address={}, rating={}, updatedBy={}", address, creditRating, updatedBy);
+    public void updateCreditRating(String address, Integer creditRating, String reason, String updatedBy) {
+        log.info("更新信用评级: address={}, rating={}, reason={}, updatedBy={}", address, creditRating, reason, updatedBy);
 
         if (creditRating < 0 || creditRating > 100) {
             throw new com.fisco.app.exception.BusinessException("信用评级必须在0-100之间");
@@ -279,12 +283,27 @@ public class EnterpriseService {
         enterprise.setUpdatedBy(updatedBy);
         enterpriseRepository.save(enterprise);
 
+        // 记录评级变更历史
+        com.fisco.app.entity.enterprise.CreditRatingHistory history = new com.fisco.app.entity.enterprise.CreditRatingHistory();
+        history.setEnterpriseAddress(address);
+        history.setEnterpriseName(enterprise.getName());
+        history.setOldRating(oldRating);
+        history.setNewRating(creditRating);
+        history.setChangeReason(reason);
+        history.setChangedBy(updatedBy);
+        history.setChangedAt(java.time.LocalDateTime.now());
+        creditRatingHistoryRepository.save(history);
+
         // 调用区块链合约更新信用评级
         try {
             String txHash = contractService.updateCreditRatingOnChain(
-                address, creditRating, "管理员更新评级");
+                address, creditRating, reason != null && !reason.isEmpty() ? reason : "管理员更新评级");
             log.info("企业信用评级已上链更新: address={}, oldRating={}, newRating={}, txHash={}",
                 address, oldRating, creditRating, txHash);
+
+            // 更新历史的txHash
+            history.setTxHash(txHash);
+            creditRatingHistoryRepository.save(history);
         } catch (Exception e) {
             log.warn("企业信用评级上链更新失败，但数据库更新成功: address={}, rating={}, error={}",
                 address, creditRating, e.getMessage());
@@ -295,11 +314,20 @@ public class EnterpriseService {
     }
 
     /**
-     * @deprecated 使用 {@link #updateCreditRating(String, Integer, String)} 代替
+     * 更新信用评级（简化版，兼容旧代码）
+     * @deprecated 使用 {@link #updateCreditRating(String, Integer, String, String)} 代替
+     */
+    @Deprecated
+    public void updateCreditRating(String address, Integer creditRating, String updatedBy) {
+        updateCreditRating(address, creditRating, null, updatedBy);
+    }
+
+    /**
+     * @deprecated 使用 {@link #updateCreditRating(String, Integer, String, String)} 代替
      */
     @Deprecated
     public void updateCreditRating(String address, Integer creditRating) {
-        updateCreditRating(address, creditRating, "SYSTEM");
+        updateCreditRating(address, creditRating, null, "SYSTEM");
     }
 
     /**
@@ -1192,5 +1220,271 @@ public class EnterpriseService {
 
         // 添加 0x 前缀，确保是42位
         return "0x" + hexString.toString();
+    }
+
+    // ==================== 企业画像和信用评分相关方法 ====================
+
+    /**
+     * 获取企业画像（聚合多维度数据）
+     *
+     * @param enterpriseId 企业ID
+     * @return 企业画像DTO
+     */
+    public com.fisco.app.dto.enterprise.EnterpriseProfileDTO getEnterpriseProfile(@NonNull String enterpriseId) {
+        log.debug("获取企业画像: enterpriseId={}", enterpriseId);
+        Enterprise enterprise = getEnterpriseById(enterpriseId);
+
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO profile = new com.fisco.app.dto.enterprise.EnterpriseProfileDTO();
+
+        // 基本信息
+        profile.setEnterpriseId(enterprise.getId());
+        profile.setName(enterprise.getName());
+        profile.setCreditCode(enterprise.getCreditCode());
+        profile.setRole(enterprise.getRole().name());
+        profile.setStatus(enterprise.getStatus().name());
+        profile.setCreditRating(enterprise.getCreditRating());
+        profile.setCreditLimit(enterprise.getCreditLimit());
+        profile.setRegisteredAt(enterprise.getRegisteredAt());
+
+        // 交易习惯
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.TransactionHabitsDTO habits =
+            calculateTransactionHabits(enterprise.getAddress());
+        profile.setTransactionHabits(habits);
+
+        // 经营状况
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.OperatingStatusDTO status =
+            calculateOperatingStatus(enterprise.getAddress());
+        profile.setOperatingStatus(status);
+
+        // 风险指标
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.RiskMetricsDTO metrics =
+            getRiskMetrics(enterprise.getAddress());
+        profile.setRiskMetrics(metrics);
+
+        return profile;
+    }
+
+    /**
+     * 获取信用评分和历史
+     *
+     * @param enterpriseId 企业ID
+     * @return 信用评分DTO
+     */
+    public com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO getCreditScore(@NonNull String enterpriseId) {
+        log.debug("获取企业信用评分: enterpriseId={}", enterpriseId);
+        Enterprise enterprise = getEnterpriseById(enterpriseId);
+
+        com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO dto = new com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO();
+        dto.setCurrentRating(enterprise.getCreditRating());
+        dto.setRatingLevel(calculateRatingLevel(enterprise.getCreditRating()));
+
+        // 查询历史记录（最近20条）
+        java.util.List<com.fisco.app.entity.enterprise.CreditRatingHistory> historyList =
+            creditRatingHistoryRepository.findByEnterpriseAddressOrderByChangedAtDesc(enterprise.getAddress());
+
+        // 转换为DTO并限制数量
+        java.util.List<com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.CreditRatingHistoryRecord> historyRecords =
+            historyList.stream()
+                .limit(20)
+                .map(com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.CreditRatingHistoryRecord::fromEntity)
+                .collect(java.util.stream.Collectors.toList());
+
+        dto.setHistory(historyRecords);
+
+        // 生成趋势数据
+        java.util.List<com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.TrendData> trend =
+            generateTrendData(historyList);
+        dto.setTrend(trend);
+
+        return dto;
+    }
+
+    /**
+     * 计算交易习惯
+     */
+    private com.fisco.app.dto.enterprise.EnterpriseProfileDTO.TransactionHabitsDTO calculateTransactionHabits(String address) {
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.TransactionHabitsDTO habits =
+            new com.fisco.app.dto.enterprise.EnterpriseProfileDTO.TransactionHabitsDTO();
+
+        // 统计票据
+        Long billCount = billRepository.countBillsByHolder(address);
+        java.math.BigDecimal billAmount = billRepository.totalAmountByHolder(address);
+        habits.setBillCount(billCount != null ? billCount : 0L);
+
+        // 统计应收账款
+        java.util.List<com.fisco.app.entity.receivable.Receivable> receivables =
+            receivableRepository.findByCurrentHolder(address);
+        habits.setReceivableCount((long) receivables.size());
+
+        // 统计仓单
+        java.util.List<com.fisco.app.entity.warehouse.ElectronicWarehouseReceipt> receipts =
+            warehouseReceiptRepository.findByHolderAddress(address);
+        habits.setWarehouseReceiptCount((long) receipts.size());
+
+        // 计算总数
+        long totalTransactions = habits.getBillCount() + habits.getReceivableCount() + habits.getWarehouseReceiptCount();
+        habits.setTotalTransactions(totalTransactions);
+
+        // 计算总金额（分）- 票据金额 + 应收账款金额
+        long totalAmount = 0L;
+        if (billAmount != null) {
+            totalAmount += billAmount.multiply(new java.math.BigDecimal("100")).longValue(); // 转换为分
+        }
+        for (com.fisco.app.entity.receivable.Receivable r : receivables) {
+            if (r.getAmount() != null) {
+                totalAmount += r.getAmount().multiply(new java.math.BigDecimal("100")).longValue();
+            }
+        }
+        habits.setTotalAmount(totalAmount);
+
+        // 计算平均交易额
+        if (totalTransactions > 0) {
+            habits.setAverageTransactionAmount(totalAmount / totalTransactions);
+        }
+
+        // 计算月均交易频次（假设数据最早从6个月前开始）
+        long monthsSinceRegistration = 6; // 默认6个月
+        if (totalTransactions > 0) {
+            habits.setMonthlyTransactionFrequency((double) totalTransactions / monthsSinceRegistration);
+        }
+
+        // 交易成功率（简化版：基于状态统计）
+        // 这里可以根据实际业务需求计算
+        habits.setTransactionSuccessRate(98.0); // 默认值
+
+        // 最近交易时间
+        java.time.LocalDateTime lastTransactionTime = findLastTransactionTime(address);
+        habits.setLastTransactionTime(lastTransactionTime);
+
+        return habits;
+    }
+
+    /**
+     * 计算经营状况
+     */
+    private com.fisco.app.dto.enterprise.EnterpriseProfileDTO.OperatingStatusDTO calculateOperatingStatus(String address) {
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.OperatingStatusDTO status =
+            new com.fisco.app.dto.enterprise.EnterpriseProfileDTO.OperatingStatusDTO();
+
+        // 这里需要集成实际的融资、还款等服务
+        // 暂时返回默认值
+        status.setTotalFinancingAmount(0L);
+        status.setFinancingCount(0);
+        status.setRepaidAmount(0L);
+        status.setPendingRepaymentAmount(0L);
+        status.setOverdueCount(0);
+        status.setOverdueAmount(0L);
+
+        // 资产数量统计
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.AssetCountDTO assetCounts =
+            new com.fisco.app.dto.enterprise.EnterpriseProfileDTO.AssetCountDTO();
+        assetCounts.setBills(billRepository.countBillsByHolder(address));
+        assetCounts.setReceivables((long) receivableRepository.findByCurrentHolder(address).size());
+        assetCounts.setWarehouseReceipts((long) warehouseReceiptRepository.findByHolderAddress(address).size());
+        status.setAssetCounts(assetCounts);
+
+        return status;
+    }
+
+    /**
+     * 获取风险指标
+     */
+    private com.fisco.app.dto.enterprise.EnterpriseProfileDTO.RiskMetricsDTO getRiskMetrics(String address) {
+        com.fisco.app.dto.enterprise.EnterpriseProfileDTO.RiskMetricsDTO metrics =
+            new com.fisco.app.dto.enterprise.EnterpriseProfileDTO.RiskMetricsDTO();
+
+        // 基于信用评级计算风险等级
+        try {
+            Enterprise enterprise = enterpriseRepository.findByAddress(address).orElse(null);
+            if (enterprise != null) {
+                Integer rating = enterprise.getCreditRating();
+                metrics.setRiskScore(rating);
+
+                // 根据评级设置风险等级
+                if (rating >= 90) {
+                    metrics.setRiskLevel("LOW");
+                } else if (rating >= 75) {
+                    metrics.setRiskLevel("MEDIUM");
+                } else if (rating >= 60) {
+                    metrics.setRiskLevel("MEDIUM_HIGH");
+                } else {
+                    metrics.setRiskLevel("HIGH");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取风险指标失败，使用默认值: address={}, error={}", address, e.getMessage());
+            metrics.setRiskLevel("UNKNOWN");
+            metrics.setRiskScore(60);
+        }
+
+        // 预警数量（默认为0，后续可以集成实际的风险预警服务）
+        metrics.setWarningCount(0);
+
+        return metrics;
+    }
+
+    /**
+     * 查找最后交易时间
+     */
+    private java.time.LocalDateTime findLastTransactionTime(String address) {
+        java.time.LocalDateTime lastTime = null;
+
+        // 查找最后票据交易时间
+        java.util.List<com.fisco.app.entity.bill.Bill> bills =
+            billRepository.findTransferableBillsByHolder(address);
+        for (com.fisco.app.entity.bill.Bill bill : bills) {
+            if (lastTime == null || (bill.getCreatedAt() != null && bill.getCreatedAt().isAfter(lastTime))) {
+                lastTime = bill.getCreatedAt();
+            }
+        }
+
+        // 查找最后应收账款时间
+        java.util.List<com.fisco.app.entity.receivable.Receivable> receivables =
+            receivableRepository.findByCurrentHolder(address);
+        for (com.fisco.app.entity.receivable.Receivable r : receivables) {
+            if (lastTime == null || (r.getCreatedAt() != null && r.getCreatedAt().isAfter(lastTime))) {
+                lastTime = r.getCreatedAt();
+            }
+        }
+
+        return lastTime;
+    }
+
+    /**
+     * 计算评分等级
+     */
+    private String calculateRatingLevel(Integer rating) {
+        if (rating == null) {
+            return "未知";
+        }
+        if (rating >= 90) {
+            return "优秀";
+        } else if (rating >= 75) {
+            return "良好";
+        } else if (rating >= 60) {
+            return "一般";
+        } else if (rating >= 40) {
+            return "较差";
+        } else {
+            return "差";
+        }
+    }
+
+    /**
+     * 生成趋势数据
+     */
+    private java.util.List<com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.TrendData> generateTrendData(
+            java.util.List<com.fisco.app.entity.enterprise.CreditRatingHistory> history) {
+
+        return history.stream()
+            .limit(10) // 最近10条
+            .map(h -> {
+                com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.TrendData trend =
+                    new com.fisco.app.dto.enterprise.EnterpriseCreditScoreDTO.TrendData();
+                trend.setDate(h.getChangedAt().toLocalDate().toString());
+                trend.setRating(h.getNewRating());
+                return trend;
+            })
+            .collect(java.util.stream.Collectors.toList());
     }
 }

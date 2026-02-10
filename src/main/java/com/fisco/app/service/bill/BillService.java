@@ -1,9 +1,25 @@
 package com.fisco.app.service.bill;
 
-import com.fisco.app.dto.bill.*;
+import java.time.LocalDateTime;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fisco.app.dto.bill.BillStatisticsDTO;
+import com.fisco.app.dto.bill.DiscountBillRequest;
+import com.fisco.app.dto.bill.DiscountBillResponse;
+import com.fisco.app.dto.bill.IssueBillRequest;
+import com.fisco.app.dto.bill.RepayBillRequest;
+import com.fisco.app.dto.bill.RepayBillResponse;
 import com.fisco.app.dto.endorsement.EndorseBillRequest;
 import com.fisco.app.dto.endorsement.EndorsementResponse;
-import com.fisco.app.entity.bill.*;
+import com.fisco.app.entity.bill.Bill;
+import com.fisco.app.entity.bill.DiscountRecord;
+import com.fisco.app.entity.bill.Endorsement;
+import com.fisco.app.entity.bill.RepaymentRecord;
+import com.fisco.app.exception.BlockchainIntegrationException;
 import com.fisco.app.repository.bill.BillRepository;
 import com.fisco.app.repository.bill.DiscountRecordRepository;
 import com.fisco.app.repository.bill.EndorsementRepository;
@@ -11,19 +27,9 @@ import com.fisco.app.repository.bill.RepaymentRecordRepository;
 import com.fisco.app.service.blockchain.ContractService;
 import com.fisco.app.service.enterprise.EnterpriseService;
 
+import io.swagger.annotations.Api;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import io.swagger.annotations.Api;
-
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.lang.NonNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-
-import com.fisco.app.exception.BlockchainIntegrationException;
 
 /**
  * 票据Service
@@ -1361,5 +1367,263 @@ public class BillService {
     public Bill getBill(@NonNull String billId) {
         return billRepository.findById(billId)
                 .orElseThrow(() -> new com.fisco.app.exception.BusinessException("票据不存在: " + billId));
+    }
+
+    // ==================== 新增功能方法 ====================
+
+    /**
+     * 获取票据统计数据
+     */
+    public BillStatisticsDTO getBillStatistics(LocalDateTime startTime, LocalDateTime endTime,
+                                               String enterpriseAddress, String dimension) {
+        log.info("获取票据统计数据: startTime={}, endTime={}, enterprise={}, dimension={}",
+                 startTime, endTime, enterpriseAddress, dimension);
+
+        BillStatisticsDTO statistics = new BillStatisticsDTO();
+        statistics.setStartTime(startTime);
+        statistics.setEndTime(endTime);
+        statistics.setGeneratedAt(LocalDateTime.now());
+
+        // 查询符合条件的票据列表
+        java.util.List<Bill> bills = queryBillsByCondition(startTime, endTime, enterpriseAddress);
+        log.debug("查询到票据数量: {}", bills.size());
+
+        // 计算基础统计
+        calculateBasicStatistics(statistics, bills);
+
+        // 计算状态分布
+        calculateStatusDistribution(statistics, bills);
+
+        // 计算类型分布
+        calculateTypeDistribution(statistics, bills);
+
+        // 计算融资统计
+        calculateFinancingStatistics(statistics, bills);
+
+        // 计算风险统计
+        calculateRiskStatistics(statistics, bills);
+
+        // 计算持票人统计
+        calculateHolderStatistics(statistics, bills);
+
+        return statistics;
+    }
+
+    /**
+     * 按条件查询票据
+     */
+    private java.util.List<Bill> queryBillsByCondition(LocalDateTime startTime, LocalDateTime endTime,
+                                                        String enterpriseAddress) {
+        if (enterpriseAddress != null && !enterpriseAddress.isEmpty()) {
+            // 按持票人查询
+            if (startTime != null && endTime != null) {
+                return billRepository.findByCurrentHolderAddressAndCreatedAtBetween(
+                    enterpriseAddress, startTime, endTime);
+            } else {
+                return billRepository.findByCurrentHolderAddress(enterpriseAddress);
+            }
+        } else {
+            // 查询全部
+            if (startTime != null && endTime != null) {
+                return billRepository.findByCreatedAtBetween(startTime, endTime);
+            } else {
+                return billRepository.findAll();
+            }
+        }
+    }
+
+    /**
+     * 计算基础统计
+     */
+    private void calculateBasicStatistics(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        long totalBills = bills.size();
+        long totalAmount = bills.stream()
+            .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+            .sum();
+        long averageAmount = totalBills > 0 ? totalAmount / totalBills : 0;
+        long minAmount = bills.stream()
+            .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+            .min()
+            .orElse(0);
+        long maxAmount = bills.stream()
+            .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+            .max()
+            .orElse(0);
+
+        statistics.setTotalBills(totalBills);
+        statistics.setTotalAmount(totalAmount);
+        statistics.setAverageAmount(averageAmount);
+        statistics.setMinAmount(minAmount);
+        statistics.setMaxAmount(maxAmount);
+    }
+
+    /**
+     * 计算状态分布
+     */
+    private void calculateStatusDistribution(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        java.util.Map<String, Long> statusCounts = bills.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                b -> b.getBillStatus().name(),
+                java.util.stream.Collectors.counting()
+            ));
+
+        java.util.List<BillStatisticsDTO.StatusDistribution> distribution = statusCounts.entrySet().stream()
+            .map(entry -> {
+                BillStatisticsDTO.StatusDistribution sd = new BillStatisticsDTO.StatusDistribution();
+                sd.setStatus(entry.getKey());
+                sd.setStatusName(getStatusDisplayName(entry.getKey()));
+                sd.setCount(entry.getValue());
+                sd.setPercentage(bills.size() > 0 ? (entry.getValue() * 100.0 / bills.size()) : 0);
+                return sd;
+            })
+            .collect(java.util.stream.Collectors.toList());
+
+        statistics.setStatusDistribution(distribution);
+        statistics.setStatusCounts(statusCounts);
+    }
+
+    /**
+     * 计算类型分布
+     */
+    private void calculateTypeDistribution(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        java.util.Map<String, Long> typeCounts = bills.stream()
+            .collect(java.util.stream.Collectors.groupingBy(
+                b -> b.getBillType().name(),
+                java.util.stream.Collectors.counting()
+            ));
+
+        java.util.List<BillStatisticsDTO.TypeDistribution> distribution = typeCounts.entrySet().stream()
+            .map(entry -> {
+                BillStatisticsDTO.TypeDistribution td = new BillStatisticsDTO.TypeDistribution();
+                td.setType(entry.getKey());
+                td.setTypeName(getTypeDisplayName(entry.getKey()));
+                td.setCount(entry.getValue());
+                td.setPercentage(bills.size() > 0 ? (entry.getValue() * 100.0 / bills.size()) : 0);
+                return td;
+            })
+            .collect(java.util.stream.Collectors.toList());
+
+        statistics.setTypeDistribution(distribution);
+        statistics.setTypeCounts(typeCounts);
+    }
+
+    /**
+     * 计算融资统计
+     */
+    private void calculateFinancingStatistics(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        long discountedCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.DISCOUNTED)
+            .count();
+
+        long discountAmount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.DISCOUNTED)
+            .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+            .sum();
+
+        long pledgedCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.PLEDGED)
+            .count();
+
+        long pledgeAmount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.PLEDGED)
+            .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+            .sum();
+
+        BillStatisticsDTO.FinancingStatistics financing = new BillStatisticsDTO.FinancingStatistics();
+        financing.setDiscountedCount(discountedCount);
+        financing.setDiscountAmount(discountAmount);
+        financing.setPledgedCount(pledgedCount);
+        financing.setPledgeAmount(pledgeAmount);
+        financing.setFinancingRate(bills.size() > 0 ? ((discountedCount + pledgedCount) * 100.0 / bills.size()) : 0);
+
+        statistics.setFinancing(financing);
+    }
+
+    /**
+     * 计算风险统计
+     */
+    private void calculateRiskStatistics(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        long frozenCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.FROZEN)
+            .count();
+
+        long expiredCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.EXPIRED)
+            .count();
+
+        long dishonoredCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.DISHONORED)
+            .count();
+
+        long totalRiskCount = frozenCount + expiredCount + dishonoredCount;
+
+        BillStatisticsDTO.RiskStatistics risk = new BillStatisticsDTO.RiskStatistics();
+        risk.setFrozenCount(frozenCount);
+        risk.setExpiredCount(expiredCount);
+        risk.setDishonoredCount(dishonoredCount);
+        risk.setTotalRiskCount(totalRiskCount);
+        risk.setRiskRate(bills.size() > 0 ? (totalRiskCount * 100.0 / bills.size()) : 0);
+
+        statistics.setRisk(risk);
+    }
+
+    /**
+     * 计算持票人统计
+     */
+    private void calculateHolderStatistics(BillStatisticsDTO statistics, java.util.List<Bill> bills) {
+        java.util.Map<String, java.util.List<Bill>> groupedByHolder = bills.stream()
+            .collect(java.util.stream.Collectors.groupingBy(Bill::getCurrentHolderAddress));
+
+        java.util.List<BillStatisticsDTO.HolderStatistics> topHolders = groupedByHolder.entrySet().stream()
+            .map(entry -> {
+                BillStatisticsDTO.HolderStatistics hs = new BillStatisticsDTO.HolderStatistics();
+                hs.setHolderId(entry.getValue().get(0).getCurrentHolderId());
+                hs.setHolderName(entry.getValue().get(0).getCurrentHolderName());
+                hs.setBillCount((long) entry.getValue().size());
+                hs.setTotalAmount(entry.getValue().stream()
+                    .mapToLong(b -> b.getFaceValue().multiply(new java.math.BigDecimal("100")).longValue())
+                    .sum());
+                return hs;
+            })
+            .sorted((a, b) -> Long.compare(b.getTotalAmount(), a.getTotalAmount()))
+            .limit(10)
+            .collect(java.util.stream.Collectors.toList());
+
+        statistics.setTopHolders(topHolders);
+    }
+
+    /**
+     * 获取状态显示名称
+     */
+    private String getStatusDisplayName(String status) {
+        switch (status) {
+            case "DRAFT": return "草稿";
+            case "PENDING_ISSUANCE": return "待开票";
+            case "ISSUED": return "已开票";
+            case "NORMAL": return "正常";
+            case "ENDORSED": return "已背书";
+            case "PLEDGED": return "已质押";
+            case "DISCOUNTED": return "已贴现";
+            case "FINANCED": return "已融资";
+            case "FROZEN": return "已冻结";
+            case "EXPIRED": return "已过期";
+            case "DISHONORED": return "已拒付";
+            case "CANCELLED": return "已作废";
+            case "PAID": return "已付款";
+            case "SETTLED": return "已结算";
+            default: return status;
+        }
+    }
+
+    /**
+     * 获取类型显示名称
+     */
+    private String getTypeDisplayName(String type) {
+        switch (type) {
+            case "BANK_ACCEPTANCE_BILL": return "银行承兑汇票";
+            case "COMMERCIAL_ACCEPTANCE_BILL": return "商业承兑汇票";
+            case "BANK_NOTE": return "银行本票";
+            default: return type;
+        }
     }
 }

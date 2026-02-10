@@ -2,6 +2,7 @@ package com.fisco.app.controller.admin;
 
 import com.fisco.app.entity.user.Admin;
 import com.fisco.app.security.JwtTokenProvider;
+import com.fisco.app.security.RequireAdmin;
 import com.fisco.app.service.user.AdminService;
 import com.fisco.app.vo.Result;
 import io.swagger.annotations.Api;
@@ -9,7 +10,9 @@ import io.swagger.annotations.ApiOperation;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +23,9 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
+import org.springframework.lang.NonNull;
 
 /**
  * 管理员认证Controller
@@ -133,6 +139,162 @@ public class AdminController {
     }
 
     /**
+     * 获取当前管理员信息
+     * GET /api/admin/auth/me
+     *
+     * 需要在请求头中提供有效的Token
+     */
+    @GetMapping("/me")
+    @RequireAdmin(RequireAdmin.AdminRole.AUDITOR)
+    @ApiOperation(value = "获取当前管理员信息",
+                  notes = "获取当前登录管理员的详细信息。需要在请求头中提供有效的Token。")
+    @io.swagger.annotations.ApiResponses({
+        @io.swagger.annotations.ApiResponse(code = 200, message = "获取成功"),
+        @io.swagger.annotations.ApiResponse(code = 401, message = "未提供Token或Token无效")
+    })
+    public Result<Admin> getCurrentAdmin(HttpServletRequest request) {
+        Admin admin = (Admin) request.getAttribute("currentAdmin");
+        if (admin == null) {
+            log.warn("Failed to get current admin from request attribute");
+            return Result.error("未获取到管理员信息，请重新登录");
+        }
+
+        // 清除密码字段，避免返回敏感信息
+        admin.setPassword(null);
+
+        log.debug("Get current admin info: username={}, realName={}, role={}",
+                admin.getUsername(), admin.getRealName(), admin.getRole());
+
+        return Result.success(admin);
+    }
+
+    /**
+     * 修改当前管理员密码
+     * PUT /api/admin/auth/change-password
+     *
+     * 需要在请求头中提供有效的Token
+     */
+    @PutMapping("/change-password")
+    @RequireAdmin(RequireAdmin.AdminRole.AUDITOR)
+    @ApiOperation(value = "修改当前管理员密码",
+                  notes = "管理员修改自己的密码。需要提供旧密码和新密码。")
+    @io.swagger.annotations.ApiResponses({
+        @io.swagger.annotations.ApiResponse(code = 200, message = "密码修改成功"),
+        @io.swagger.annotations.ApiResponse(code = 400, message = "旧密码错误或新密码不符合要求"),
+        @io.swagger.annotations.ApiResponse(code = 401, message = "未提供Token或Token无效")
+    })
+    public Result<String> changePassword(
+            @Valid @RequestBody AdminChangePasswordRequest request,
+            HttpServletRequest httpRequest) {
+
+        Admin admin = (Admin) httpRequest.getAttribute("currentAdmin");
+        if (admin == null) {
+            log.warn("Failed to get current admin from request attribute during password change");
+            return Result.error("未获取到管理员信息，请重新登录");
+        }
+
+        String adminId = Objects.requireNonNull(admin.getId(), "Admin ID cannot be null");
+        String updatedBy = Objects.requireNonNull(admin.getUsername(), "Admin username cannot be null");
+
+        try {
+            adminService.changePassword(
+                    adminId,
+                    request.getOldPassword(),
+                    request.getNewPassword(),
+                    updatedBy
+            );
+
+            log.info("Admin password changed successfully: adminId={}, username={}",
+                    adminId, admin.getUsername());
+
+            return Result.success("密码修改成功，请使用新密码重新登录");
+
+        } catch (com.fisco.app.exception.BusinessException e) {
+            log.warn("Admin password change failed: adminId={}, error={}",
+                    adminId, e.getMessage());
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 刷新访问令牌
+     * POST /api/admin/auth/refresh-token
+     *
+     * 使用当前有效的Token获取新的访问令牌
+     */
+    @PostMapping("/refresh-token")
+    @RequireAdmin(RequireAdmin.AdminRole.AUDITOR)
+    @ApiOperation(value = "刷新访问令牌",
+                  notes = "在令牌有效期内刷新访问令牌。需要在请求头中提供当前有效的Token。")
+    @io.swagger.annotations.ApiResponses({
+        @io.swagger.annotations.ApiResponse(code = 200, message = "令牌刷新成功"),
+        @io.swagger.annotations.ApiResponse(code = 401, message = "当前令牌已过期，请重新登录")
+    })
+    public Result<Map<String, String>> refreshToken(
+            @RequestHeader("Authorization") String authHeader) {
+
+        String token = jwtTokenProvider.extractTokenFromHeader(authHeader);
+
+        // 验证当前令牌是否有效
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            log.warn("Token refresh failed: invalid or expired token");
+            return Result.error("当前令牌已过期，请重新登录");
+        }
+
+        try {
+            // 从令牌中提取信息
+            String username = jwtTokenProvider.getUserAddressFromToken(token);
+            String role = jwtTokenProvider.getRoleFromToken(token);
+            String loginType = jwtTokenProvider.getLoginTypeFromToken(token);
+
+            // 生成新令牌
+            String newToken = jwtTokenProvider.generateEnhancedToken(
+                    username,
+                    null,  // 管理员不属于企业
+                    role,
+                    loginType != null ? loginType : "ADMIN"
+            );
+
+            Map<String, String> response = new HashMap<>();
+            response.put("token", newToken);
+            response.put("type", "Bearer");
+
+            log.info("Admin token refreshed successfully: username={}", username);
+            return Result.success("令牌刷新成功", response);
+
+        } catch (Exception e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            return Result.error("令牌刷新失败，请重新登录");
+        }
+    }
+
+    /**
+     * 管理员登出
+     * POST /api/admin/auth/logout
+     *
+     * JWT无状态认证，登出操作由前端删除Token即可
+     * 后端仅记录登出日志用于审计
+     */
+    @PostMapping("/logout")
+    @RequireAdmin(RequireAdmin.AdminRole.AUDITOR)
+    @ApiOperation(value = "管理员登出",
+                  notes = "管理员退出登录。前端需要删除存储的Token。后端记录登出日志用于审计。")
+    @io.swagger.annotations.ApiResponses({
+        @io.swagger.annotations.ApiResponse(code = 200, message = "登出成功")
+    })
+    public Result<String> logout(HttpServletRequest request) {
+        Admin admin = (Admin) request.getAttribute("currentAdmin");
+        if (admin != null) {
+            log.info("Admin logged out: username={}, realName={}, role={}",
+                    admin.getUsername(), admin.getRealName(), admin.getRole());
+        } else {
+            log.info("Admin logout attempt: no admin info in request");
+        }
+
+        return Result.success("登出成功");
+    }
+
+    /**
      * 获取客户端IP地址
      */
     private String getClientIp(HttpServletRequest request) {
@@ -166,5 +328,33 @@ public class AdminController {
         @org.springframework.lang.NonNull
         @io.swagger.annotations.ApiModelProperty(value = "登录密码", required = true)
         private String password;
+    }
+
+    /**
+     * 管理员修改密码请求DTO
+     */
+    @Data
+    @io.swagger.annotations.ApiModel(value = "管理员修改密码请求", description = "管理员修改自己的密码")
+    public static class AdminChangePasswordRequest {
+        @NonNull
+        @NotBlank(message = "旧密码不能为空")
+        @io.swagger.annotations.ApiModelProperty(value = "旧密码", required = true, notes = "当前使用的密码")
+        private String oldPassword;
+
+        @NonNull
+        @NotBlank(message = "新密码不能为空")
+        @io.swagger.annotations.ApiModelProperty(value = "新密码", required = true, notes = "新设置的密码")
+        private String newPassword;
+    }
+
+    /**
+     * 管理员刷新令牌请求DTO
+     * 注意：当前实现从Authorization header获取token，此DTO为未来扩展预留
+     */
+    @Data
+    @io.swagger.annotations.ApiModel(value = "管理员刷新令牌请求", description = "刷新访问令牌（当前从header获取token）")
+    public static class AdminRefreshTokenRequest {
+        @io.swagger.annotations.ApiModelProperty(value = "刷新令牌", notes = "当前实现从Authorization header获取，此字段保留用于未来扩展")
+        private String refreshToken;
     }
 }

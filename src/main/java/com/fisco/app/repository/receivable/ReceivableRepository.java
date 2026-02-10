@@ -72,4 +72,10 @@ public interface ReceivableRepository extends JpaRepository<Receivable, String> 
      * 查找父应收账款的所有子应收账款
      */
     List<Receivable> findByParentReceivableId(String parentReceivableId);
+
+    /**
+     * 根据id查找应收账款（使用业务ID查询）
+     */
+    @Query("SELECT r FROM Receivable r WHERE r.id = :receivableId")
+    java.util.Optional<Receivable> findByReceivableId(@Param("receivableId") String receivableId);
 }

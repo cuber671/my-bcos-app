@@ -292,6 +292,45 @@ public class ElectronicWarehouseReceipt {
     @ApiModelProperty(value = "子仓单数量", example = "2")
     private Integer splitCount;
 
+    // ==================== 合并相关字段（4个） ✨ 新增 ====================
+
+    @Column(name = "merge_count")
+    @ApiModelProperty(value = "合并仓单数量", example = "3")
+    private Integer mergeCount;
+
+    @Column(name = "merge_time", columnDefinition = "DATETIME(6)")
+    @ApiModelProperty(value = "合并时间", example = "2026-02-09T15:00:00")
+    private LocalDateTime mergeTime;
+
+    @Column(name = "source_receipt_ids", columnDefinition = "TEXT")
+    @ApiModelProperty(value = "源仓单ID列表（JSON格式）", example = "[\"id1\",\"id2\",\"id3\"]")
+    private String sourceReceiptIds;
+
+    // ==================== 货物类型字段（1个） ✨ 新增 ====================
+
+    @Column(name = "goods_type", length = 100)
+    @ApiModelProperty(value = "货物类型/分类", example = "建材-钢材-螺纹钢")
+    private String goodsType;
+
+    // ==================== 入库日期别名（1个） ✨ 新增 ====================
+
+    @ApiModelProperty(value = "入库日期（与storageDate相同，为兼容性添加）", example = "2026-01-26T10:00:00")
+    private LocalDateTime warehouseEntryDate;
+
+    /**
+     * 获取入库日期（别名方法，与storageDate相同）
+     */
+    public LocalDateTime getWarehouseEntryDate() {
+        return this.storageDate;
+    }
+
+    /**
+     * 设置入库日期（同时设置storageDate）
+     */
+    public void setWarehouseEntryDate(LocalDateTime warehouseEntryDate) {
+        this.storageDate = warehouseEntryDate;
+    }
+
     // ==================== 作废相关字段 (5个字段) ✨ 新增 ====================
 
     @Column(name = "cancel_reason", columnDefinition = "TEXT")
@@ -443,6 +482,8 @@ public class ElectronicWarehouseReceipt {
         FROZEN,           // 已冻结
         SPLITTING,        // 拆分中（拆分申请已提交，正在审核）
         SPLIT,            // 已拆分（拆分完成，父仓单状态）
+        MERGING,          // 合并中（合并申请已提交，正在审核）
+        MERGED,           // 已合并（合并完成，源仓单状态）
         CANCELLING,       // 作废中 ✨ 新增（作废申请已提交，正在审核）
         CANCELLED,        // 已作废（作废完成）
         EXPIRED,          // 已过期

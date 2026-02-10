@@ -191,6 +191,39 @@ public class ElectronicWarehouseReceiptResponse {
     @ApiModelProperty(value = "更新人", example = "admin")
     private String updatedBy;
 
+    // ==================== 拆分相关字段 ====================
+
+    @ApiModelProperty(value = "拆分时间", example = "2026-02-02T10:30:00")
+    private LocalDateTime splitTime;
+
+    @ApiModelProperty(value = "子仓单数量", example = "2")
+    private Integer splitCount;
+
+    // ==================== 作废相关字段 ====================
+
+    @ApiModelProperty(value = "作废原因", example = "货物质量问题")
+    private String cancelReason;
+
+    @ApiModelProperty(value = "作废类型", example = "QUALITY_ISSUE")
+    private String cancelType;
+
+    @ApiModelProperty(value = "作废时间", example = "2026-02-02T11:00:00")
+    private LocalDateTime cancelTime;
+
+    @ApiModelProperty(value = "作废操作人ID", example = "admin-uuid-001")
+    private String cancelledBy;
+
+    @ApiModelProperty(value = "参考编号（如法律文书号）", example = "2026民初字第001号")
+    private String referenceNo;
+
+    // ==================== 软删除相关字段 ====================
+
+    @ApiModelProperty(value = "软删除时间")
+    private LocalDateTime deletedAt;
+
+    @ApiModelProperty(value = "删除人")
+    private String deletedBy;
+
     // ==================== 辅助方法 ====================
 
     /**

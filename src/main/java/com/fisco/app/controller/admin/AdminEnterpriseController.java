@@ -249,7 +249,13 @@ public class AdminEnterpriseController {
         Admin admin = (Admin) httpRequest.getAttribute("currentAdmin");
 
         Enterprise enterprise = enterpriseService.getEnterpriseById(id);
-        enterpriseService.updateCreditRating(enterprise.getAddress(), request.getCreditRating(), admin.getUsername());
+        // 使用4参数版本的 updateCreditRating 方法（包含 reason 参数）
+        enterpriseService.updateCreditRating(
+            enterprise.getAddress(),
+            request.getCreditRating(),
+            request.getReason(),
+            admin.getUsername()
+        );
 
         log.info("管理员更新企业信用评级: admin={}, enterpriseId={}, creditRating={}",
                 admin.getUsername(), id, request.getCreditRating());
@@ -642,6 +648,9 @@ public class AdminEnterpriseController {
         @NotNull(message = "信用评级不能为空")
         @io.swagger.annotations.ApiModelProperty(value = "信用评级(0-100)", required = true, example = "75")
         private Integer creditRating;
+
+        @io.swagger.annotations.ApiModelProperty(value = "变更原因", example = "按时还款记录良好，经营状况稳定", notes = "可选，建议提供详细的评级变更原因以便追溯")
+        private String reason;
     }
 
     /**

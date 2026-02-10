@@ -51,6 +51,8 @@ import org.springframework.data.domain.Sort;
 public class UserController {
 
     private final UserService userService;
+    private final com.fisco.app.service.user.UserActivityService userActivityService;
+    private final com.fisco.app.service.user.UserPermissionService userPermissionService;
 
     /**
      * 创建用户
@@ -320,6 +322,130 @@ public class UserController {
         String approver = authentication.getName();
         userService.rejectUserRegistration(userId, approver, reason, authentication);
         return Result.success("用户注册已拒绝");
+    }
+
+    /**
+     * 解锁用户
+     * POST /api/users/{userId}/unlock
+     */
+    @PostMapping("/{userId}/unlock")
+    @ApiOperation(value = "解锁用户", notes = "解锁被锁定的用户账户")
+    @RequireEnterpriseAdmin
+    public Result<String> unlockUser(
+            @ApiParam(value = "用户ID", required = true) @PathVariable @NonNull String userId,
+            Authentication authentication) {
+        String operator = authentication.getName();
+        userService.unlockUser(userId, operator);
+        return Result.success("用户解锁成功");
+    }
+
+    /**
+     * 查询用户活动日志
+     * GET /api/users/activity
+     */
+    @GetMapping("/activity")
+    @ApiOperation(value = "查询用户活动日志", notes = "分页查询用户登录、操作等活动记录")
+    @RequireEnterpriseAdmin
+    public Result<org.springframework.data.domain.Page<com.fisco.app.dto.user.UserActivityDTO>> getUserActivities(
+            @ApiParam(value = "用户ID") @RequestParam(required = false) String userId,
+            @ApiParam(value = "用户名") @RequestParam(required = false) String username,
+            @ApiParam(value = "活动类型") @RequestParam(required = false) com.fisco.app.entity.user.UserActivity.ActivityType activityType,
+            @ApiParam(value = "操作模块") @RequestParam(required = false) String module,
+            @ApiParam(value = "操作结果") @RequestParam(required = false) com.fisco.app.entity.user.UserActivity.ActivityResult result,
+            @ApiParam(value = "IP地址") @RequestParam(required = false) String ipAddress,
+            @ApiParam(value = "开始时间", example = "2024-01-01T00:00:00") @RequestParam(required = false) java.time.LocalDateTime startDate,
+            @ApiParam(value = "结束时间", example = "2024-12-31T23:59:59") @RequestParam(required = false) java.time.LocalDateTime endDate,
+            @ApiParam(value = "页码", example = "0") @RequestParam(defaultValue = "0") int page,
+            @ApiParam(value = "每页大小", example = "10") @RequestParam(defaultValue = "10") int size,
+            @ApiParam(value = "排序字段", example = "createdAt") @RequestParam(defaultValue = "createdAt") String sortBy,
+            @ApiParam(value = "排序方向", example = "DESC") @RequestParam(defaultValue = "DESC") String sortDir) {
+
+        com.fisco.app.dto.user.UserActivityQueryRequest request = new com.fisco.app.dto.user.UserActivityQueryRequest();
+        request.setUserId(userId);
+        request.setUsername(username);
+        request.setActivityType(activityType);
+        request.setModule(module);
+        request.setResult(result);
+        request.setIpAddress(ipAddress);
+        request.setStartDate(startDate);
+        request.setEndDate(endDate);
+        request.setPage(page);
+        request.setSize(size);
+        request.setSortField(sortBy);
+        request.setSortDirection(sortDir);
+
+        org.springframework.data.domain.Page<com.fisco.app.dto.user.UserActivityDTO> activities =
+            userActivityService.queryActivities(request);
+
+        return Result.success(activities);
+    }
+
+    /**
+     * 设置用户权限
+     * POST /api/users/{userId}/permissions
+     */
+    @PostMapping("/{userId}/permissions")
+    @ApiOperation(value = "设置用户权限", notes = "为用户设置细粒度权限列表")
+    @RequireEnterpriseAdmin
+    public Result<java.util.List<com.fisco.app.dto.user.UserPermissionDTO>> setUserPermissions(
+            @ApiParam(value = "用户ID", required = true) @PathVariable @NonNull String userId,
+            @Valid @RequestBody com.fisco.app.dto.user.SetUserPermissionsRequest request,
+            Authentication authentication) {
+        String operator = authentication.getName();
+
+        java.util.List<com.fisco.app.dto.user.UserPermissionDTO> permissions =
+            userPermissionService.setUserPermissions(userId, request.getPermissions(), operator);
+
+        return Result.success("用户权限设置成功", permissions);
+    }
+
+    /**
+     * 获取用户权限
+     * GET /api/users/{userId}/permissions
+     */
+    @GetMapping("/{userId}/permissions")
+    @ApiOperation(value = "获取用户权限", notes = "查询用户的所有权限")
+    @RequireEnterpriseAdmin
+    public Result<java.util.List<com.fisco.app.dto.user.UserPermissionDTO>> getUserPermissions(
+            @ApiParam(value = "用户ID", required = true) @PathVariable @NonNull String userId) {
+
+        java.util.List<com.fisco.app.dto.user.UserPermissionDTO> permissions =
+            userPermissionService.getUserPermissions(userId);
+
+        return Result.success(permissions);
+    }
+
+    /**
+     * 删除用户权限
+     * DELETE /api/users/{userId}/permissions/{permissionId}
+     */
+    @DeleteMapping("/{userId}/permissions/{permissionId}")
+    @ApiOperation(value = "删除用户权限", notes = "删除用户的指定权限")
+    @RequireEnterpriseAdmin
+    public Result<String> deleteUserPermission(
+            @ApiParam(value = "用户ID", required = true) @PathVariable @NonNull String userId,
+            @ApiParam(value = "权限ID", required = true) @PathVariable @NonNull String permissionId,
+            Authentication authentication) {
+        String operator = authentication.getName();
+        userPermissionService.deleteUserPermission(userId, permissionId, operator);
+        return Result.success("用户权限删除成功");
+    }
+
+    /**
+     * 启用/禁用用户权限
+     * PUT /api/users/{userId}/permissions/{permissionId}/toggle
+     */
+    @PutMapping("/{userId}/permissions/{permissionId}/toggle")
+    @ApiOperation(value = "启用/禁用用户权限", notes = "启用或禁用用户的指定权限")
+    @RequireEnterpriseAdmin
+    public Result<String> toggleUserPermission(
+            @ApiParam(value = "用户ID", required = true) @PathVariable @NonNull String userId,
+            @ApiParam(value = "权限ID", required = true) @PathVariable @NonNull String permissionId,
+            @ApiParam(value = "是否启用", required = true) @RequestParam boolean enabled,
+            Authentication authentication) {
+        String operator = authentication.getName();
+        userPermissionService.toggleUserPermission(userId, permissionId, enabled, operator);
+        return Result.success(enabled ? "用户权限已启用" : "用户权限已禁用");
     }
 
     // ==================== DTO类 ====================

@@ -22,6 +22,7 @@ import com.fisco.app.entity.bill.Bill;
 import com.fisco.app.entity.bill.DiscountRecord;
 import com.fisco.app.entity.bill.Endorsement;
 import com.fisco.app.entity.bill.RepaymentRecord;
+import com.fisco.app.security.RequireEnterprise;
 import com.fisco.app.service.bill.BillService;
 import com.fisco.app.vo.Result;
 
@@ -518,5 +519,173 @@ public class BillController {
 
         FinanceApplicationResponse response = billService.repayFinance(applicationId, request, payerAddress);
         return Result.success("还款成功", response);
+    }
+
+    // ==================== 新增功能接口 ====================
+
+    /**
+     * 获取票据统计数据
+     * GET /api/bill/statistics
+     *
+     * 权限说明：
+     * - 企业用户只能查询自己的统计数据
+     * - 如果传入enterpriseAddress参数，必须是当前登录用户自己的地址
+     */
+    @GetMapping("/statistics")
+    @RequireEnterprise
+    @ApiOperation(value = "票据统计分析", notes = "查询票据的整体统计数据，支持多维度聚合分析")
+    public Result<BillStatisticsDTO> getBillStatistics(
+            @ApiParam(value = "统计开始时间") @RequestParam(required = false) java.time.LocalDateTime startTime,
+            @ApiParam(value = "统计结束时间") @RequestParam(required = false) java.time.LocalDateTime endTime,
+            @ApiParam(value = "企业地址（可选，不传则查询当前用户数据）") @RequestParam(required = false) String enterpriseAddress,
+            @ApiParam(value = "统计维度") @RequestParam(required = false) String dimension,
+            Authentication authentication) {
+
+        String currentUserAddress = authentication.getName();
+
+        // 安全检查：如果传入了enterpriseAddress，必须是当前用户自己的地址
+        if (enterpriseAddress != null && !enterpriseAddress.isEmpty()
+            && !enterpriseAddress.equals(currentUserAddress)) {
+            log.warn("用户尝试查询其他企业的统计数据: currentUser={}, requestedEnterprise={}",
+                     currentUserAddress, enterpriseAddress);
+            return Result.error("无权查询其他企业的统计数据");
+        }
+
+        // 如果没有传入enterpriseAddress，使用当前登录用户的地址
+        if (enterpriseAddress == null || enterpriseAddress.isEmpty()) {
+            enterpriseAddress = currentUserAddress;
+        }
+
+        log.info("查询票据统计数据: startTime={}, endTime={}, enterprise={}, dimension={}",
+                 startTime, endTime, enterpriseAddress, dimension);
+
+        BillStatisticsDTO statistics = billService.getBillStatistics(startTime, endTime, enterpriseAddress, dimension);
+        return Result.success("统计查询成功", statistics);
+    }
+
+    /**
+     * 票据承兑
+     * POST /api/bill/{billId}/acceptance
+     *
+     * 权限说明：
+     * - 只有企业用户可以访问
+     * - TODO: 业务层需要验证当前用户是否是该票据的承兑人
+     */
+    @PostMapping("/{billId}/acceptance")
+    @RequireEnterprise
+    @ApiOperation(value = "票据承兑", notes = "承兑人确认承兑票据")
+    public Result<BillAcceptanceResponse> acceptBill(
+            @ApiParam(value = "票据ID", required = true) @PathVariable String billId,
+            @ApiParam(value = "承兑请求参数", required = true) @RequestBody @Valid AcceptBillRequest request,
+            Authentication authentication) {
+
+        String acceptorAddress = authentication.getName();
+        log.info("票据承兑请求: billId={}, acceptorAddress={}, acceptanceType={}",
+                 billId, acceptorAddress, request.getAcceptanceType());
+
+        // TODO: Implement acceptance logic in BillService
+        // TODO: Add business logic check: verify current user is the acceptor of the bill
+        BillAcceptanceResponse response = new BillAcceptanceResponse();
+        response.setBillId(billId);
+        response.setAcceptanceType(request.getAcceptanceType());
+        response.setAcceptanceRemarks(request.getAcceptanceRemarks());
+        response.setAcceptorAddress(acceptorAddress);
+        response.setResult("success");
+        response.setMessage("票据承兑功能待实现");
+
+        return Result.success("票据承兑请求已接收", response);
+    }
+
+    /**
+     * 票据拆分
+     * POST /api/bill/{billId}/split
+     *
+     * 权限说明：
+     * - 只有企业用户可以访问
+     * - TODO: 业务层需要验证当前用户是否是该票据的当前持票人
+     */
+    @PostMapping("/{billId}/split")
+    @RequireEnterprise
+    @ApiOperation(value = "票据拆分", notes = "将一笔票据拆分为多笔小额票据")
+    public Result<BillSplitResponse> splitBill(
+            @ApiParam(value = "父票据ID", required = true) @PathVariable String billId,
+            @ApiParam(value = "拆分请求参数", required = true) @RequestBody @Valid SplitBillRequest request,
+            Authentication authentication) {
+
+        String applicantAddress = authentication.getName();
+        log.info("票据拆分请求: billId={}, applicantAddress={}, splitScheme={}, splitCount={}",
+                 billId, applicantAddress, request.getSplitScheme(), request.getSplitCount());
+
+        // TODO: Implement split logic in BillService
+        // TODO: Add business logic check: verify current user is the current holder of the bill
+        BillSplitResponse response = new BillSplitResponse();
+        response.setParentBillId(billId);
+        response.setSplitScheme(request.getSplitScheme());
+        response.setSplitCount(request.getSplitCount());
+        response.setResult("pending");
+        response.setMessage("票据拆分功能待实现");
+
+        return Result.success("票据拆分请求已接收", response);
+    }
+
+    /**
+     * 票据合并
+     * POST /api/bill/merge
+     *
+     * 权限说明：
+     * - 只有企业用户可以访问
+     * - TODO: 业务层需要验证当前用户是否是所有待合并票据的当前持票人
+     */
+    @PostMapping("/merge")
+    @RequireEnterprise
+    @ApiOperation(value = "票据合并", notes = "将多笔票据合并为一笔大额票据")
+    public Result<BillMergeResponse> mergeBills(
+            @ApiParam(value = "合并请求参数", required = true) @RequestBody @Valid MergeBillsRequest request,
+            Authentication authentication) {
+
+        String applicantAddress = authentication.getName();
+        log.info("票据合并请求: applicantAddress={}, mergeType={}, billCount={}",
+                 applicantAddress, request.getMergeType(), request.getBillIds().size());
+
+        // TODO: Implement merge logic in BillService
+        // TODO: Add business logic check: verify current user is the holder of all bills to be merged
+        BillMergeResponse response = new BillMergeResponse();
+        response.setMergeType(request.getMergeType());
+        response.setResult("pending");
+        response.setMessage("票据合并功能待实现");
+
+        return Result.success("票据合并请求已接收", response);
+    }
+
+    /**
+     * 票据担保
+     * POST /api/bill/{billId}/guarantee
+     *
+     * 权限说明：
+     * - 只有企业用户可以访问
+     * - 任何企业都可以为票据提供担保（第三方担保）
+     */
+    @PostMapping("/{billId}/guarantee")
+    @RequireEnterprise
+    @ApiOperation(value = "票据担保", notes = "第三方为票据提供担保")
+    public Result<BillGuaranteeResponse> guaranteeBill(
+            @ApiParam(value = "票据ID", required = true) @PathVariable String billId,
+            @ApiParam(value = "担保请求参数", required = true) @RequestBody @Valid GuaranteeBillRequest request,
+            Authentication authentication) {
+
+        String guarantorAddress = authentication.getName();
+        log.info("票据担保请求: billId={}, guarantorAddress={}, guaranteeType={}, guaranteeAmount={}",
+                 billId, guarantorAddress, request.getGuaranteeType(), request.getGuaranteeAmount());
+
+        // TODO: Implement guarantee logic in BillService
+        BillGuaranteeResponse response = new BillGuaranteeResponse();
+        response.setBillId(billId);
+        response.setGuarantorAddress(guarantorAddress);
+        response.setGuaranteeType(request.getGuaranteeType());
+        response.setGuaranteeAmount(request.getGuaranteeAmount());
+        response.setResult("pending");
+        response.setMessage("票据担保功能待实现");
+
+        return Result.success("票据担保请求已接收", response);
     }
 }

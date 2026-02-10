@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fisco.app.dto.credit.CreditLimitAdjustApprovalRequest;
 import com.fisco.app.dto.credit.CreditLimitAdjustRequestDTO;
 import com.fisco.app.dto.credit.CreditLimitAdjustResponse;
+import com.fisco.app.dto.credit.CreditLimitAvailableResponse;
 import com.fisco.app.dto.credit.CreditLimitCreateRequest;
 import com.fisco.app.dto.credit.CreditLimitDTO;
 import com.fisco.app.dto.credit.CreditLimitFreezeRequest;
@@ -26,6 +27,8 @@ import com.fisco.app.dto.credit.CreditLimitUsageQueryResponse;
 import com.fisco.app.dto.credit.CreditLimitWarningQueryRequest;
 import com.fisco.app.dto.credit.CreditLimitWarningQueryResponse;
 import com.fisco.app.enums.CreditAdjustRequestStatus;
+import com.fisco.app.exception.BusinessException;
+import com.fisco.app.security.PermissionChecker;
 import com.fisco.app.service.credit.CreditLimitService;
 import com.fisco.app.vo.Result;
 
@@ -46,6 +49,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CreditLimitController {
 
     private final CreditLimitService creditLimitService;
+    private final PermissionChecker permissionChecker;
 
     // ==================== 额度管理 ====================
 
@@ -99,19 +103,42 @@ public class CreditLimitController {
             @ApiParam(value = "页码（从0开始）") @RequestParam(required = false, defaultValue = "0") Integer page,
             @ApiParam(value = "每页大小") @RequestParam(required = false, defaultValue = "10") Integer size,
             @ApiParam(value = "排序字段") @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
-            @ApiParam(value = "排序方向") @RequestParam(required = false, defaultValue = "DESC") String sortDirection) {
+            @ApiParam(value = "排序方向") @RequestParam(required = false, defaultValue = "DESC") String sortDirection,
+            Authentication authentication) {
 
         log.info("==================== 接收到查询信用额度请求 ====================");
-        log.info("查询条件: enterpriseAddress={}, limitType={}, status={}, page={}, size={}",
-                enterpriseAddress, limitType, status, page, size);
+        log.info("查询条件: enterpriseAddress={}, limitType={}, status={}, page={}, size={}, 操作人={}",
+                enterpriseAddress, limitType, status, page, size, authentication.getName());
 
         long startTime = System.currentTimeMillis();
 
         try {
+            // 权限验证：
+            // 1. 如果指定了企业地址，验证是否有权限查看该企业的数据
+            // 2. 如果未指定企业地址，非管理员用户只能查询自己的数据
+            String targetEnterpriseAddress = enterpriseAddress;
+
+            if (targetEnterpriseAddress == null || targetEnterpriseAddress.isEmpty()) {
+                // 未指定企业，检查用户角色
+                if (!(authentication instanceof com.fisco.app.security.UserAuthentication)) {
+                    throw new BusinessException("无效的认证信息");
+                }
+                com.fisco.app.security.UserAuthentication userAuth =
+                        (com.fisco.app.security.UserAuthentication) authentication;
+
+                if (!userAuth.isSystemAdmin()) {
+                    // 普通用户只能查看自己的额度
+                    targetEnterpriseAddress = userAuth.getEnterpriseAddress();
+                    log.info("未指定企业地址，自动使用当前用户企业地址: {}", targetEnterpriseAddress);
+                }
+            } else {
+                // 指定了企业地址，验证权限
+                permissionChecker.checkEnterprisePermission(authentication, targetEnterpriseAddress);
+            }
+
             // 构建查询请求
             CreditLimitQueryRequest request = new CreditLimitQueryRequest();
-            request.setEnterpriseAddress(enterpriseAddress);
-            // 这里需要将字符串转换为枚举，为了简化先省略
+            request.setEnterpriseAddress(targetEnterpriseAddress);
             request.setStatus(status != null ? com.fisco.app.enums.CreditLimitStatus.valueOf(status) : null);
             request.setRiskLevel(riskLevel != null ? com.fisco.app.entity.credit.CreditLimit.RiskLevel.valueOf(riskLevel) : null);
             request.setUsageRateMin(usageRateMin);
@@ -145,18 +172,24 @@ public class CreditLimitController {
     @GetMapping("/{id}")
     @ApiOperation(value = "查询单个额度详情", notes = "根据ID查询信用额度详情")
     public Result<CreditLimitDTO> getCreditLimitById(
-            @ApiParam(value = "额度ID", required = true) @PathVariable @NonNull String id) {
+            @ApiParam(value = "额度ID", required = true) @PathVariable @NonNull String id,
+            Authentication authentication) {
 
         log.info("==================== 接收到查询单个额度请求 ====================");
-        log.info("额度ID: {}", id);
+        log.info("额度ID: {}, 操作人: {}", id, authentication.getName());
 
         long startTime = System.currentTimeMillis();
 
         try {
+            // 1. 查询额度
             CreditLimitDTO result = creditLimitService.getCreditLimitById(id);
 
+            // 2. 权限验证：只有管理员或额度所属企业才能查看
+            permissionChecker.checkEnterprisePermission(authentication, result.getEnterpriseAddress());
+
             long duration = System.currentTimeMillis() - startTime;
-            log.info("✓✓✓ 查询单个额度请求处理完成: limitId={}, 耗时={}ms", id, duration);
+            log.info("✓✓✓ 查询单个额度请求处理完成: limitId={}, 企业={}, 耗时={}ms",
+                    id, result.getEnterpriseName(), duration);
             log.info("==================== 查询单个额度请求结束 ====================");
 
             return Result.success(result);
@@ -171,20 +204,62 @@ public class CreditLimitController {
     }
 
     /**
+     * 查询额度可用余额
+     * GET /api/credit-limit/{id}/available
+     */
+    @GetMapping("/{id}/available")
+    @ApiOperation(value = "查询额度可用余额", notes = "查询指定额度的可用余额、使用率等详细信息")
+    public Result<CreditLimitAvailableResponse> getCreditLimitAvailable(
+            @ApiParam(value = "额度ID", required = true) @PathVariable @NonNull String id,
+            Authentication authentication) {
+
+        log.info("==================== 接收到查询额度可用余额请求 ====================");
+        log.info("额度ID: {}, 操作人: {}", id, authentication.getName());
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 1. 查询额度可用余额
+            CreditLimitAvailableResponse result = creditLimitService.getCreditLimitAvailable(id);
+
+            // 2. 权限验证：只有管理员或额度所属企业才能查看
+            permissionChecker.checkEnterprisePermission(authentication, result.getEnterpriseAddress());
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("✓✓✓ 查询额度可用余额请求处理完成: limitId={}, 企业={}, 可用额度={}元, 耗时={}ms",
+                    id, result.getEnterpriseName(), result.getAvailableLimit(), duration);
+            log.info("==================== 查询额度可用余额请求结束 ====================");
+
+            return Result.success(result);
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("✗✗✗ 查询额度可用余额请求处理失败: limitId={}, 耗时={}ms, error={}",
+                    id, duration, e.getMessage(), e);
+            log.info("==================== 查询额度可用余额请求失败（结束） ====================");
+            throw e;
+        }
+    }
+
+    /**
      * 查询企业的所有额度
      * GET /api/credit-limit/enterprise/{address}
      */
     @GetMapping("/enterprise/{address}")
     @ApiOperation(value = "查询企业的所有额度", notes = "根据企业地址查询所有信用额度")
     public Result<java.util.List<CreditLimitDTO>> getCreditLimitsByEnterprise(
-            @ApiParam(value = "企业地址", required = true) @PathVariable @NonNull String address) {
+            @ApiParam(value = "企业地址", required = true) @PathVariable @NonNull String address,
+            Authentication authentication) {
 
         log.info("==================== 接收到查询企业额度请求 ====================");
-        log.info("企业地址: {}", address);
+        log.info("企业地址: {}, 操作人: {}", address, authentication.getName());
 
         long startTime = System.currentTimeMillis();
 
         try {
+            // 权限验证：只有管理员或该企业成员才能查询
+            permissionChecker.checkEnterprisePermission(authentication, address);
+
             java.util.List<CreditLimitDTO> result = creditLimitService.getCreditLimitsByEnterprise(address);
 
             long duration = System.currentTimeMillis() - startTime;
@@ -626,24 +701,49 @@ public class CreditLimitController {
     @GetMapping("/statistics")
     @ApiOperation(value = "获取额度统计信息", notes = "获取信用额度统计信息")
     public Result<CreditLimitQueryResponse.CreditLimitStatistics> getStatistics(
-            @ApiParam(value = "企业地址") @RequestParam(required = false) String enterpriseAddress) {
+            @ApiParam(value = "企业地址") @RequestParam(required = false) String enterpriseAddress,
+            Authentication authentication) {
 
         log.info("==================== 接收到获取统计信息请求 ====================");
-        log.info("查询条件: enterpriseAddress={}", enterpriseAddress);
+        log.info("查询条件: enterpriseAddress={}, 操作人={}", enterpriseAddress, authentication.getName());
 
         long startTime = System.currentTimeMillis();
 
         try {
+            // 权限验证：
+            // 1. 如果指定了企业地址，验证是否有权限查看该企业的数据
+            // 2. 如果未指定企业地址，非管理员用户只能查询自己的数据
+            String targetEnterpriseAddress = enterpriseAddress;
+
+            if (targetEnterpriseAddress == null || targetEnterpriseAddress.isEmpty()) {
+                // 未指定企业，检查用户角色
+                if (!(authentication instanceof com.fisco.app.security.UserAuthentication)) {
+                    throw new BusinessException("无效的认证信息");
+                }
+                com.fisco.app.security.UserAuthentication userAuth =
+                        (com.fisco.app.security.UserAuthentication) authentication;
+
+                if (!userAuth.isSystemAdmin()) {
+                    // 普通用户只能查看自己的统计
+                    targetEnterpriseAddress = userAuth.getEnterpriseAddress();
+                    log.info("未指定企业地址，自动使用当前用户企业地址: {}", targetEnterpriseAddress);
+                }
+            } else {
+                // 指定了企业地址，验证权限
+                permissionChecker.checkEnterprisePermission(authentication, targetEnterpriseAddress);
+            }
+
             // 构建查询请求
             CreditLimitQueryRequest request = new CreditLimitQueryRequest();
-            request.setEnterpriseAddress(enterpriseAddress);
+            request.setEnterpriseAddress(targetEnterpriseAddress);
             request.setPage(0);
             request.setSize(Integer.MAX_VALUE); // 获取所有记录用于统计
 
             CreditLimitQueryResponse response = creditLimitService.queryCreditLimits(request);
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("✓✓✓ 获取统计信息请求处理完成: 耗时={}ms", duration);
+            log.info("✓✓✓ 获取统计信息请求处理完成: 企业={}, 额度数量={}, 耗时={}ms",
+                    targetEnterpriseAddress, response.getTotalElements(), duration);
             log.info("==================== 获取统计信息请求结束 ====================");
 
             return Result.success(response.getStatistics());

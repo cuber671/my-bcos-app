@@ -52,7 +52,9 @@ import lombok.Data;
     @Index(name = "idx_current_holder_id", columnList = "current_holder_id"),
     @Index(name = "idx_due_date", columnList = "due_date"),
     @Index(name = "idx_backed_receipt_id", columnList = "backed_receipt_id"),
-    @Index(name = "idx_created_at", columnList = "created_at")
+    @Index(name = "idx_created_at", columnList = "created_at"),
+    @Index(name = "idx_parent_bill", columnList = "parent_bill_id"),
+    @Index(name = "idx_guarantee", columnList = "guarantee_id")
 })
 @ApiModel(value = "票据实体", description = "票据主表实体（完整版）")
 public class Bill {
@@ -233,6 +235,51 @@ public class Bill {
     @ApiModelProperty(value = "仓单担保价值", example = "4500000.00")
     @Column(name = "receipt_pledge_value", precision = 20, scale = 2)
     private BigDecimal receiptPledgeValue;
+
+    // ==================== 拆分合并信息 ====================
+
+    @ApiModelProperty(value = "父票据ID（拆分或合并后）")
+    @Column(name = "parent_bill_id", length = 36)
+    private String parentBillId;
+
+    @ApiModelProperty(value = "拆分数量", example = "3")
+    @Column(name = "split_count")
+    private Integer splitCount;
+
+    @ApiModelProperty(value = "合并前票据数量", example = "2")
+    @Column(name = "merge_count")
+    private Integer mergeCount;
+
+    @ApiModelProperty(value = "拆分时间")
+    @Column(name = "split_time", columnDefinition = "DATETIME(6)")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime splitTime;
+
+    @ApiModelProperty(value = "合并时间")
+    @Column(name = "merge_time", columnDefinition = "DATETIME(6)")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime mergeTime;
+
+    // ==================== 承兑信息 ====================
+
+    @ApiModelProperty(value = "承兑时间")
+    @Column(name = "acceptance_time", columnDefinition = "DATETIME(6)")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime acceptanceTime;
+
+    @ApiModelProperty(value = "承兑备注", example = "确认承兑该票据")
+    @Column(name = "acceptance_remarks", length = 500)
+    private String acceptanceRemarks;
+
+    // ==================== 担保信息 ====================
+
+    @ApiModelProperty(value = "担保记录ID")
+    @Column(name = "guarantee_id", length = 36)
+    private String guaranteeId;
+
+    @ApiModelProperty(value = "是否有担保")
+    @Column(name = "has_guarantee", nullable = false)
+    private Boolean hasGuarantee = false;
 
     // ==================== 追索信息 ====================
 

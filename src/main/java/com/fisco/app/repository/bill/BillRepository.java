@@ -318,4 +318,42 @@ public interface BillRepository extends JpaRepository<Bill, String> {
            "AND (b.frozen IS NULL OR b.frozen = false) " +
            "AND b.dueDate > :currentDate")
     BigDecimal sumBillPoolFaceValue(@Param("currentDate") LocalDateTime currentDate);
+
+    // ==================== 新增查询方法 ====================
+
+    /**
+     * 根据创建时间范围查询票据
+     */
+    List<Bill> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
+    /**
+     * 根据父票据ID查询子票据
+     */
+    List<Bill> findByParentBillId(String parentBillId);
+
+    /**
+     * 根据担保ID查询票据
+     */
+    List<Bill> findByGuaranteeId(String guaranteeId);
+
+    /**
+     * 查询有担保的票据
+     */
+    List<Bill> findByHasGuaranteeTrue();
+
+    // ==================== 持票人地址查询 ====================
+
+    /**
+     * 根据当前持票人区块链地址查询票据
+     */
+    List<Bill> findByCurrentHolderAddress(String currentHolderAddress);
+
+    /**
+     * 根据当前持票人区块链地址和创建时间范围查询票据
+     */
+    List<Bill> findByCurrentHolderAddressAndCreatedAtBetween(
+        String currentHolderAddress,
+        LocalDateTime startDate,
+        LocalDateTime endDate
+    );
 }

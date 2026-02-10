@@ -42,10 +42,19 @@ import com.fisco.app.dto.warehouse.ReceiptApprovalRequest;
 import com.fisco.app.dto.warehouse.ReceiptApprovalResponse;
 import com.fisco.app.dto.warehouse.ReceiptFreezeResponse;
 import com.fisco.app.dto.warehouse.ReceiptUnfreezeResponse;
+import com.fisco.app.dto.warehouse.MergeReceiptsRequest;
+import com.fisco.app.dto.warehouse.ReceiptMergeResponse;
+import com.fisco.app.dto.warehouse.MergeApprovalRequest;
+import com.fisco.app.dto.warehouse.UpdateReceiptRequest;
+import com.fisco.app.dto.warehouse.WarehouseReceiptStatisticsDTO;
 import com.fisco.app.entity.warehouse.ElectronicWarehouseReceipt;
 import com.fisco.app.entity.warehouse.ReceiptCancelApplication;
+import com.fisco.app.entity.warehouse.ReceiptMergeApplication;
+import com.fisco.app.entity.warehouse.ReceiptChangeHistory;
 import com.fisco.app.repository.warehouse.ElectronicWarehouseReceiptRepository;
 import com.fisco.app.service.warehouse.ElectronicWarehouseReceiptService;
+import com.fisco.app.service.warehouse.WarehouseReceiptStatisticsService;
+import com.fisco.app.security.UserAuthentication;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -68,6 +77,9 @@ public class ElectronicWarehouseReceiptController {
 
     @Autowired
     private ElectronicWarehouseReceiptRepository repository;
+
+    @Autowired
+    private WarehouseReceiptStatisticsService statisticsService;
 
     /**
      * 创建仓单
@@ -776,5 +788,217 @@ public class ElectronicWarehouseReceiptController {
         List<ElectronicWarehouseReceiptResponse> responses =
             receiptService.getCancelledReceipts(enterpriseId, auth);
         return ResponseEntity.ok(responses);
+    }
+
+    // ==================== 仓单合并功能 ====================
+
+    /**
+     * 提交仓单合并申请
+     */
+    @PostMapping("/merge/apply")
+    @ApiOperation(value = "提交仓单合并申请",
+        notes = "将多个仓单合并为一个仓单。" +
+                "业务规则：" +
+                "1. 合并数量：2-10个仓单；" +
+                "2. 状态要求：所有源仓单必须为NORMAL状态；" +
+                "3. 所有权要求：所有源仓单必须属于同一货主企业；" +
+                "4. 合并类型：QUANTITY-数量合并（货物名称、单位、单价必须相同），" +
+                "            VALUE-价值合并（不同货物按价值比例合并），" +
+                "            FULL-完全合并；" +
+                "5. 流程：提交申请 → 审核 → 执行合并。" +
+                "权限要求：货主企业可以提交合并申请。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "合并申请提交成功", response = ReceiptMergeResponse.class),
+            @ApiResponse(code = 400, message = "请求参数错误"),
+            @ApiResponse(code = 403, message = "无权限操作"),
+            @ApiResponse(code = 404, message = "仓单不存在")
+    })
+    public ResponseEntity<ReceiptMergeResponse> submitMergeApplication(
+            @Valid @RequestBody MergeReceiptsRequest request) {
+
+        log.info("收到仓单合并申请: receiptCount={}", request.getReceiptIds().size());
+
+        // 从SecurityContext获取当前用户认证信息
+        org.springframework.security.core.Authentication auth =
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(auth instanceof UserAuthentication)) {
+            throw new RuntimeException("无效的认证信息");
+        }
+
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        ReceiptMergeResponse response = receiptService.submitMergeApplication(
+            request,
+            userAuth.getUserId(),
+            userAuth.getUsername()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 审核仓单合并申请
+     */
+    @PostMapping("/merge/approve")
+    @ApiOperation(value = "审核仓单合并申请",
+        notes = "审核仓单合并申请，通过后自动执行合并操作。" +
+                "审核通过：创建合并仓单，源仓单状态变更为MERGED；" +
+                "审核拒绝：源仓单保持原状态，申请状态变更为REJECTED。" +
+                "权限要求：系统管理员或仓储企业可以审核合并申请。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "审核成功", response = ReceiptMergeResponse.class),
+            @ApiResponse(code = 400, message = "请求参数错误"),
+            @ApiResponse(code = 403, message = "无权限审核"),
+            @ApiResponse(code = 404, message = "合并申请不存在")
+    })
+    public ResponseEntity<ReceiptMergeResponse> approveMergeApplication(
+            @Valid @RequestBody MergeApprovalRequest request) {
+
+        log.info("收到仓单合并审核: applicationId={}, approved={}",
+            request.getApplicationId(), request.getApproved());
+
+        // 从SecurityContext获取当前用户认证信息
+        org.springframework.security.core.Authentication auth =
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(auth instanceof UserAuthentication)) {
+            throw new RuntimeException("无效的认证信息");
+        }
+
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        ReceiptMergeResponse response = receiptService.approveMergeApplication(
+            request,
+            userAuth.getUserId(),
+            userAuth.getUsername()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 查询待审核的合并申请
+     */
+    @GetMapping("/merge/pending")
+    @ApiOperation(value = "查询待审核的合并申请",
+        notes = "查询待审核的仓单合并申请列表。" +
+                "权限要求：系统管理员可查询所有待审核申请；" +
+                "仓储企业只能查询自己仓单的待审核申请。" +
+                "用于管理员和仓储企业查看需要审核的合并申请。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "查询成功", response = ReceiptMergeApplication.class, responseContainer = "List"),
+            @ApiResponse(code = 403, message = "无权限查询")
+    })
+    public ResponseEntity<java.util.List<ReceiptMergeApplication>> getPendingMergeApplications() {
+        log.info("查询待审核的合并申请");
+
+        java.util.List<ReceiptMergeApplication> applications =
+            receiptService.getPendingMergeApplications();
+        return ResponseEntity.ok(applications);
+    }
+
+    // ==================== 仓单变更管理功能 ====================
+
+    /**
+     * 更新仓单（增强版：记录变更历史）
+     */
+    @PutMapping("/update-with-history/{id}")
+    @ApiOperation(value = "更新仓单（记录变更历史）",
+        notes = "更新仓单信息并记录完整的变更历史。" +
+                "可更新字段：单价、市场价格、仓库位置、存储位置、有效期、备注。" +
+                "业务规则：" +
+                "1. 可变更状态：DRAFT、NORMAL；" +
+                "2. 价格调整时自动重新计算总价值；" +
+                "3. 有效期延长：新有效期必须晚于或等于当前有效期；" +
+                "4. 所有变更都会记录到变更历史表（变更前后对比）；" +
+                "5. 支持多种变更类型：价格调整、位置变更、有效期延长、信息更新等。" +
+                "权限要求：货主企业或仓储企业可以变更。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "更新成功", response = ElectronicWarehouseReceiptResponse.class),
+            @ApiResponse(code = 400, message = "请求参数错误"),
+            @ApiResponse(code = 403, message = "无权限更新"),
+            @ApiResponse(code = 404, message = "仓单不存在")
+    })
+    public ResponseEntity<ElectronicWarehouseReceiptResponse> updateReceiptWithHistory(
+            @PathVariable @NonNull String id,
+            @Valid @RequestBody UpdateReceiptRequest request) {
+
+        log.info("收到仓单更新请求（记录变更历史）: id={}, changeType={}",
+            id, request.getChangeType());
+
+        // 从SecurityContext获取当前用户认证信息
+        org.springframework.security.core.Authentication auth =
+            org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(auth instanceof UserAuthentication)) {
+            throw new RuntimeException("无效的认证信息");
+        }
+
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        ElectronicWarehouseReceiptResponse response = receiptService.updateReceiptWithHistory(
+            id,
+            request,
+            userAuth.getUserId(),
+            userAuth.getUsername()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 查询仓单变更历史
+     */
+    @GetMapping("/{id}/change-history")
+    @ApiOperation(value = "查询仓单变更历史",
+        notes = "查询指定仓单的所有变更历史记录，包括变更前后的值对比。" +
+                "返回完整的变更历史列表，按时间倒序排列。" +
+                "用于审计追踪和问题排查。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "查询成功", response = ReceiptChangeHistory.class, responseContainer = "List"),
+            @ApiResponse(code = 404, message = "仓单不存在")
+    })
+    public ResponseEntity<java.util.List<ReceiptChangeHistory>> getReceiptChangeHistory(
+            @PathVariable @NonNull String id) {
+
+        log.info("查询仓单变更历史: receiptId={}", id);
+
+        java.util.List<ReceiptChangeHistory> history =
+            receiptService.getReceiptChangeHistory(id);
+        return ResponseEntity.ok(history);
+    }
+
+    // ==================== 仓单统计功能 ====================
+
+    /**
+     * 查询仓单统计
+     */
+    @GetMapping("/statistics")
+    @ApiOperation(value = "查询仓单统计",
+        notes = "查询仓单的多维度统计数据，支持管理决策。" +
+                "统计维度：" +
+                "1. 基础统计：仓单总数、总价值、总数量；" +
+                "2. 状态分布：各状态仓单的数量和价值占比；" +
+                "3. 货物类型分布：按货物名称统计（数量、总价值、平均单价）；" +
+                "4. 企业分布：按货主企业统计（Top 10）；" +
+                "5. 风险统计：即将过期（7天内）、已过期、已冻结仓单数量和价值；" +
+                "6. 操作统计：拆分、合并、作废申请数量。" +
+                "参数说明：" +
+                "- startTime: 统计开始时间（可选），不传则统计所有时间；" +
+                "- endTime: 统计结束时间（可选），不传则统计所有时间。" +
+                "权限要求：所有登录用户可以查询统计数据。")
+    @ApiResponses({
+            @ApiResponse(code = 200, message = "查询成功", response = WarehouseReceiptStatisticsDTO.class)
+    })
+    public ResponseEntity<WarehouseReceiptStatisticsDTO> getReceiptStatistics(
+            @RequestParam(required = false) java.time.LocalDateTime startTime,
+            @RequestParam(required = false) java.time.LocalDateTime endTime) {
+
+        log.info("查询仓单统计: startTime={}, endTime={}", startTime, endTime);
+
+        WarehouseReceiptStatisticsDTO statistics =
+            statisticsService.getReceiptStatistics(startTime, endTime);
+        return ResponseEntity.ok(statistics);
     }
 }

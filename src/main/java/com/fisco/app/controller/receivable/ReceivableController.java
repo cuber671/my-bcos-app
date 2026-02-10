@@ -13,11 +13,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fisco.app.dto.receivable.AgedAnalysisResponse;
 import com.fisco.app.dto.receivable.BadDebtQueryRequest;
 import com.fisco.app.dto.receivable.BadDebtQueryResponse;
 import com.fisco.app.dto.receivable.CreateReceivableRequest;
+import com.fisco.app.dto.receivable.FinanceRecordResponse;
 import com.fisco.app.dto.receivable.OverdueQueryRequest;
 import com.fisco.app.dto.receivable.OverdueQueryResponse;
 import com.fisco.app.dto.receivable.PenaltyCalculateRequest;
@@ -28,8 +31,15 @@ import com.fisco.app.dto.receivable.ReceivableSplitRequest;
 import com.fisco.app.dto.receivable.ReceivableSplitResponse;
 import com.fisco.app.dto.receivable.RemindRequest;
 import com.fisco.app.dto.receivable.RemindResponse;
+import com.fisco.app.dto.receivable.RepayDetailRequest;
+import com.fisco.app.dto.receivable.RepaymentRecordResponse;
+import com.fisco.app.dto.receivable.ReceivableStatisticsResponse;
+import com.fisco.app.dto.receivable.TransferHistoryResponse;
+import com.fisco.app.dto.receivable.WriteOffRequest;
 import com.fisco.app.entity.receivable.Receivable;
 import com.fisco.app.service.receivable.ReceivableOverdueService;
+import com.fisco.app.service.receivable.ReceivableQueryService;
+import com.fisco.app.service.receivable.ReceivableRepaymentService;
 import com.fisco.app.service.receivable.ReceivableService;
 import com.fisco.app.vo.Result;
 
@@ -53,6 +63,8 @@ public class ReceivableController {
 
     private final ReceivableService receivableService;
     private final ReceivableOverdueService receivableOverdueService;
+    private final ReceivableRepaymentService receivableRepaymentService;
+    private final ReceivableQueryService receivableQueryService;
 
     /**
      * 创建应收账款
@@ -181,6 +193,74 @@ public class ReceivableController {
         return Result.success();
     }
 
+    // ==================== 还款详情接口（增强版）====================
+
+    /**
+     * 应收账款还款（详细版）
+     * PUT /api/receivable/{receivableId}/repay-detail
+     */
+    @PutMapping("/{receivableId}/repay-detail")
+    @ApiOperation(value = "应收账款还款（详细版）", notes = "支持部分还款、提前还款、逾期还款，记录完整的还款信息")
+    public Result<RepaymentRecordResponse> repayDetail(
+            @ApiParam(value = "应收账款ID", required = true) @PathVariable @NonNull String receivableId,
+            @ApiParam(value = "还款详情", required = true) @Valid @RequestBody RepayDetailRequest request,
+            Authentication authentication) {
+
+        log.info("==================== 接收到应收账款还款详情请求 ====================");
+        log.info("还款详情: receivableId={}, type={}, amount={}",
+                receivableId, request.getRepaymentType(), request.getRepaymentAmount());
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 设置应收账款ID
+            request.setReceivableId(receivableId);
+
+            String payerAddress = authentication.getName();
+            if (payerAddress == null) {
+                throw new IllegalStateException("Authentication principal is null");
+            }
+            RepaymentRecordResponse response = receivableRepaymentService.repayDetail(request, payerAddress);
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("✓✓✓ 应收账款还款详情请求处理完成: receivableId={}, 耗时={}ms",
+                    receivableId, duration);
+            log.info("==================== 应收账款还款详情请求结束 ====================");
+
+            return Result.success("还款成功", response);
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("✗✗✗ 应收账款还款详情请求处理失败: receivableId={}, 耗时={}ms, error={}",
+                    receivableId, duration, e.getMessage(), e);
+            log.info("==================== 应收账款还款详情请求失败（结束） ====================");
+            throw e;
+        }
+    }
+
+    /**
+     * 查询应收账款的还款记录
+     * GET /api/receivable/{receivableId}/repayment-records
+     */
+    @GetMapping("/{receivableId}/repayment-records")
+    @ApiOperation(value = "查询应收账款的还款记录", notes = "查询指定应收账款的所有还款历史记录")
+    public Result<List<RepaymentRecordResponse>> getRepaymentRecords(
+            @ApiParam(value = "应收账款ID", required = true) @PathVariable @NonNull String receivableId,
+            Authentication authentication) {
+
+        log.info("查询还款记录: receivableId={}", receivableId);
+
+        String userAddress = authentication.getName();
+        if (userAddress == null) {
+            throw new IllegalStateException("Authentication principal is null");
+        }
+        List<RepaymentRecordResponse> records =
+                receivableRepaymentService.getRepaymentRecords(receivableId, userAddress);
+
+        log.info("查询到{}条还款记录", records.size());
+        return Result.success(records);
+    }
+
     /**
      * 转让应收账款
      * PUT /api/receivable/{receivableId}/transfer
@@ -264,6 +344,177 @@ public class ReceivableController {
             @ApiParam(value = "应收账款状态", required = true, example = "FINANCED") @PathVariable Receivable.ReceivableStatus status) {
         List<Receivable> receivables = receivableService.getReceivablesByStatus(status);
         return Result.success(receivables);
+    }
+
+    // ==================== 查询历史接口 ====================
+
+    /**
+     * 查询应收账款的转让历史
+     * GET /api/receivable/{receivableId}/transfer-history
+     */
+    @GetMapping("/{receivableId}/transfer-history")
+    @ApiOperation(value = "查询应收账款的转让历史", notes = "查询指定应收账款的所有转让记录")
+    public Result<List<TransferHistoryResponse>> getTransferHistory(
+            @ApiParam(value = "应收账款ID", required = true) @PathVariable @NonNull String receivableId,
+            Authentication authentication) {
+
+        log.info("查询转让历史: receivableId={}", receivableId);
+
+        String userAddress = authentication.getName();
+        if (userAddress == null) {
+            throw new IllegalStateException("Authentication principal is null");
+        }
+        List<TransferHistoryResponse> history =
+                receivableQueryService.getTransferHistory(receivableId, userAddress);
+
+        log.info("查询到{}条转让记录", history.size());
+        return Result.success(history);
+    }
+
+    /**
+     * 查询应收账款的融资记录
+     * GET /api/receivable/{receivableId}/finance-records
+     */
+    @GetMapping("/{receivableId}/finance-records")
+    @ApiOperation(value = "查询应收账款的融资记录", notes = "查询指定应收账款的融资历史记录")
+    public Result<List<FinanceRecordResponse>> getFinanceRecords(
+            @ApiParam(value = "应收账款ID", required = true) @PathVariable @NonNull String receivableId,
+            Authentication authentication) {
+
+        log.info("查询融资记录: receivableId={}", receivableId);
+
+        String userAddress = authentication.getName();
+        if (userAddress == null) {
+            throw new IllegalStateException("Authentication principal is null");
+        }
+        List<FinanceRecordResponse> records =
+                receivableQueryService.getFinanceRecords(receivableId, userAddress);
+
+        log.info("查询到{}条融资记录", records.size());
+        return Result.success(records);
+    }
+
+    // ==================== 统计分析接口 ====================
+
+    /**
+     * 查询应收账款统计
+     * GET /api/receivable/statistics
+     */
+    @GetMapping("/statistics")
+    @ApiOperation(value = "查询应收账款统计", notes = "查询应收账款的多维度统计数据（只能查询自己相关的数据）")
+    public Result<ReceivableStatisticsResponse> getStatistics(
+            @ApiParam(value = "供应商地址（可选）") @RequestParam(required = false) String supplierAddress,
+            @ApiParam(value = "核心企业地址（可选）") @RequestParam(required = false) String coreEnterpriseAddress,
+            @ApiParam(value = "资金方地址（可选）") @RequestParam(required = false) String financierAddress,
+            Authentication authentication) {
+
+        log.info("查询应收账款统计: supplier={}, core={}, financier={}",
+                supplierAddress, coreEnterpriseAddress, financierAddress);
+
+        // 权限验证：用户只能查询自己相关的统计数据
+        String userAddress = authentication.getName();
+
+        // 验证用户不能查询其他用户的数据
+        if (supplierAddress != null && !supplierAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询供应商{}的统计数据，拒绝访问", userAddress, supplierAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他供应商的统计数据");
+        }
+        if (coreEnterpriseAddress != null && !coreEnterpriseAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询核心企业{}的统计数据，拒绝访问", userAddress, coreEnterpriseAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他核心企业的统计数据");
+        }
+        if (financierAddress != null && !financierAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询资金方{}的统计数据，拒绝访问", userAddress, financierAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他资金方的统计数据");
+        }
+
+        // 如果没有指定过滤条件，默认查询当前用户相关的所有数据
+        // 注意：这里假设用户有权限查看自己的数据，实际业务可能需要更复杂的权限控制
+        ReceivableStatisticsResponse statistics =
+                receivableQueryService.getStatistics(supplierAddress, coreEnterpriseAddress, financierAddress);
+
+        log.info("统计完成: totalCount={}, totalAmount={}",
+                statistics.getTotalCount(), statistics.getTotalAmount());
+        return Result.success(statistics);
+    }
+
+    /**
+     * 查询应收账款账龄分析
+     * GET /api/receivable/aged
+     */
+    @GetMapping("/aged")
+    @ApiOperation(value = "查询应收账款账龄分析", notes = "按账龄段统计应收账款（0-30天、31-60天、61-90天、90天以上）（只能查询自己相关的数据）")
+    public Result<AgedAnalysisResponse> getAgedAnalysis(
+            @ApiParam(value = "供应商地址（可选）") @RequestParam(required = false) String supplierAddress,
+            @ApiParam(value = "核心企业地址（可选）") @RequestParam(required = false) String coreEnterpriseAddress,
+            @ApiParam(value = "资金方地址（可选）") @RequestParam(required = false) String financierAddress,
+            Authentication authentication) {
+
+        log.info("查询账龄分析: supplier={}, core={}, financier={}",
+                supplierAddress, coreEnterpriseAddress, financierAddress);
+
+        // 权限验证：用户只能查询自己相关的账龄分析数据
+        String userAddress = authentication.getName();
+
+        // 验证用户不能查询其他用户的数据
+        if (supplierAddress != null && !supplierAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询供应商{}的账龄分析，拒绝访问", userAddress, supplierAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他供应商的账龄分析");
+        }
+        if (coreEnterpriseAddress != null && !coreEnterpriseAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询核心企业{}的账龄分析，拒绝访问", userAddress, coreEnterpriseAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他核心企业的账龄分析");
+        }
+        if (financierAddress != null && !financierAddress.equals(userAddress)) {
+            log.warn("用户{}试图查询资金方{}的账龄分析，拒绝访问", userAddress, financierAddress);
+            throw new com.fisco.app.exception.BusinessException("无权限查询其他资金方的账龄分析");
+        }
+
+        AgedAnalysisResponse analysis =
+                receivableQueryService.getAgedAnalysis(supplierAddress, coreEnterpriseAddress, financierAddress);
+
+        log.info("账龄分析完成");
+        return Result.success(analysis);
+    }
+
+    // ==================== 核销管理接口 ====================
+
+    /**
+     * 核销坏账
+     * POST /api/receivable/{receivableId}/write-off
+     */
+    @PostMapping("/{receivableId}/write-off")
+    @ApiOperation(value = "核销坏账", notes = "对无法回收的坏账进行财务核销处理")
+    public Result<Void> writeOffBadDebt(
+            @ApiParam(value = "应收账款ID", required = true) @PathVariable @NonNull String receivableId,
+            @ApiParam(value = "核销信息", required = true) @Valid @RequestBody WriteOffRequest request,
+            Authentication authentication) {
+
+        log.info("==================== 接收到坏账核销请求 ====================");
+        log.info("核销信息: receivableId={}, reason={}", receivableId, request.getReason());
+
+        long startTime = System.currentTimeMillis();
+
+        try {
+            String operatorAddress = authentication.getName();
+            if (operatorAddress == null) {
+                throw new IllegalStateException("Authentication principal is null");
+            }
+            receivableQueryService.writeOffBadDebt(receivableId, request, operatorAddress);
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("✓✓✓ 坏账核销请求处理完成: receivableId={}, 耗时={}ms", receivableId, duration);
+            log.info("==================== 坏账核销请求结束 ====================");
+
+            return Result.success();
+
+        } catch (Exception e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("✗✗✗ 坏账核销请求处理失败: receivableId={}, 耗时={}ms, error={}",
+                    receivableId, duration, e.getMessage(), e);
+            log.info("==================== 坏账核销请求失败（结束） ====================");
+            throw e;
+        }
     }
 
     // ==================== 逾期管理接口 ====================

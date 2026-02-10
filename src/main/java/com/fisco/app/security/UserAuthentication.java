@@ -156,4 +156,19 @@ public class UserAuthentication implements Authentication {
                address != null &&
                this.enterpriseAddress.equalsIgnoreCase(address);
     }
+
+    /**
+     * 获取用户ID
+     * 优先返回企业ID（对于企业用户），否则返回用户名
+     *
+     * @return 用户ID（企业ID或用户名）
+     */
+    public String getUserId() {
+        // 优先返回企业ID，因为在供应链金融系统中，企业是主要用户类型
+        if (this.enterpriseId != null && !this.enterpriseId.isEmpty()) {
+            return this.enterpriseId;
+        }
+        // 如果没有企业ID，返回用户名
+        return this.username;
+    }
 }

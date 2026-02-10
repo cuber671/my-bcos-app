@@ -4,6 +4,7 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fisco.app.dto.credit.CreditLimitAdjustRequestDTO;
 import com.fisco.app.dto.credit.CreditLimitAdjustResponse;
+import com.fisco.app.dto.credit.CreditLimitAvailableResponse;
 import com.fisco.app.dto.credit.CreditLimitCreateRequest;
 import com.fisco.app.dto.credit.CreditLimitDTO;
 import com.fisco.app.dto.credit.CreditLimitFreezeResponse;
@@ -1258,5 +1260,75 @@ public class CreditLimitService {
             return BigDecimal.ZERO;
         }
         return new BigDecimal(fen).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+    }
+
+    // ==================== 额度可用余额查询 ====================
+
+    /**
+     * 查询额度可用余额
+     * @param id 额度ID
+     * @return 可用余额响应
+     */
+    public CreditLimitAvailableResponse getCreditLimitAvailable(@NonNull String id) {
+        log.debug("查询额度可用余额: limitId={}", id);
+
+        // 1. 查询额度实体
+        CreditLimit creditLimit = Objects.requireNonNull(
+            creditLimitRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("额度不存在: " + id)),
+            "Credit limit should not be null after orElseThrow"
+        );
+
+        // 2. 转换为响应DTO
+        return convertToAvailableResponse(creditLimit);
+    }
+
+    /**
+     * 转换为可用余额响应
+     */
+    private CreditLimitAvailableResponse convertToAvailableResponse(@NonNull CreditLimit entity) {
+        CreditLimitAvailableResponse response = new CreditLimitAvailableResponse();
+
+        // 基本信息
+        response.setId(entity.getId());
+        response.setEnterpriseAddress(entity.getEnterpriseAddress());
+        response.setEnterpriseName(entity.getEnterpriseName());
+        response.setLimitType(entity.getLimitType().getCode());
+        response.setLimitTypeName(entity.getLimitType().getDescription());
+        response.setStatus(entity.getStatus().getCode());
+        response.setStatusName(entity.getStatus().getDescription());
+
+        // 金额信息（分转元）
+        response.setTotalLimit(convertFenToYuan(entity.getTotalLimit()));
+        response.setUsedLimit(convertFenToYuan(entity.getUsedLimit()));
+        response.setFrozenLimit(convertFenToYuan(entity.getFrozenLimit()));
+        response.setAvailableLimit(convertFenToYuan(entity.getAvailableLimit()));
+
+        // 使用率和预警
+        response.setUsageRate(entity.getUsageRate());
+        response.setWarningThreshold(entity.getWarningThreshold());
+        response.setNeedsWarning(entity.needsWarning());
+
+        // 时间信息
+        response.setEffectiveDate(entity.getEffectiveDate());
+        response.setExpiryDate(entity.getExpiryDate());
+        response.setDaysUntilExpiry(calculateDaysUntilExpiry(entity.getExpiryDate()));
+
+        // 查询时间
+        response.setQueriedAt(LocalDateTime.now());
+
+        return response;
+    }
+
+    /**
+     * 计算距离失效天数
+     */
+    private Integer calculateDaysUntilExpiry(LocalDateTime expiryDate) {
+        if (expiryDate == null) {
+            return null; // 永久有效
+        }
+        LocalDateTime now = LocalDateTime.now();
+        long days = java.time.temporal.ChronoUnit.DAYS.between(now, expiryDate);
+        return days >= 0 ? (int) days : 0; // 已过期返回0
     }
 }

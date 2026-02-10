@@ -208,6 +208,214 @@ public class ElectronicWarehouseReceiptService {
     }
 
     /**
+     * 更新仓单（增强版：记录变更历史）
+     *
+     * @param id 仓单ID
+     * @param request 更新请求（包含变更原因和变更类型）
+     * @param operatorId 操作人ID
+     * @param operatorName 操作人姓名
+     * @return 更新后的仓单响应
+     */
+    @Transactional
+    @SuppressWarnings("null")
+    public ElectronicWarehouseReceiptResponse updateReceiptWithHistory(
+            @NonNull String id,
+            com.fisco.app.dto.warehouse.UpdateReceiptRequest request,
+            String operatorId,
+            String operatorName) {
+
+        log.info("更新仓单（记录变更历史）: id={}, changeType={}, operator={}",
+            id, request.getChangeType(), operatorName);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // ==================== 第1步：查询并验证仓单 ====================
+        ElectronicWarehouseReceipt receipt = repository.findById(id)
+                .orElseThrow(() -> new com.fisco.app.exception.BusinessException("仓单不存在: " + id));
+
+        // 只有草稿或正常状态可以更新
+        if (receipt.getReceiptStatus() != ElectronicWarehouseReceipt.ReceiptStatus.DRAFT
+                && receipt.getReceiptStatus() != ElectronicWarehouseReceipt.ReceiptStatus.NORMAL) {
+            throw new com.fisco.app.exception.BusinessException(
+                "只有草稿或正常状态的仓单可以更新。当前状态: " + receipt.getReceiptStatus());
+        }
+
+        // ==================== 第2步：权限验证 ====================
+        if (!(auth instanceof UserAuthentication)) {
+            throw new com.fisco.app.exception.BusinessException("无效的认证信息");
+        }
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        // 货主企业或仓储企业可以变更
+        if (!userAuth.getEnterpriseId().equals(receipt.getOwnerId()) &&
+            !userAuth.getEnterpriseId().equals(receipt.getWarehouseId()) &&
+            !userAuth.isSystemAdmin()) {
+            throw new com.fisco.app.exception.BusinessException("无权限更新此仓单");
+        }
+
+        // ==================== 第3步：记录变更前的值 ====================
+        java.util.Map<String, Object> beforeValue = new java.util.HashMap<>();
+        java.util.List<String> changedFields = new java.util.ArrayList<>();
+
+        if (request.getUnitPrice() != null) {
+            beforeValue.put("unitPrice", receipt.getUnitPrice());
+            changedFields.add("unitPrice");
+        }
+        if (request.getMarketPrice() != null) {
+            beforeValue.put("marketPrice", receipt.getMarketPrice());
+            changedFields.add("marketPrice");
+        }
+        if (request.getWarehouseLocation() != null) {
+            beforeValue.put("warehouseLocation", receipt.getWarehouseLocation());
+            changedFields.add("warehouseLocation");
+        }
+        if (request.getStorageLocation() != null) {
+            beforeValue.put("storageLocation", receipt.getStorageLocation());
+            changedFields.add("storageLocation");
+        }
+        if (request.getExpiryDate() != null) {
+            beforeValue.put("expiryDate", receipt.getExpiryDate());
+            changedFields.add("expiryDate");
+        }
+        if (request.getRemarks() != null) {
+            beforeValue.put("remarks", receipt.getRemarks());
+            changedFields.add("remarks");
+        }
+
+        // ==================== 第4步：执行更新 ====================
+        if (request.getUnitPrice() != null) {
+            // 单价调整时，需要重新计算总价值
+            receipt.setUnitPrice(request.getUnitPrice());
+            // 防止空指针异常：确保quantity不为null
+            if (receipt.getQuantity() != null) {
+                receipt.setTotalValue(request.getUnitPrice().multiply(receipt.getQuantity()));
+            } else {
+                throw new com.fisco.app.exception.BusinessException("仓单数量不能为空，无法计算总价值");
+            }
+            log.info("单价调整: {} -> {}, 总价值重新计算: {}",
+                beforeValue.get("unitPrice"), request.getUnitPrice(), receipt.getTotalValue());
+        }
+        if (request.getMarketPrice() != null) {
+            receipt.setMarketPrice(request.getMarketPrice());
+        }
+        if (request.getWarehouseLocation() != null) {
+            receipt.setWarehouseLocation(request.getWarehouseLocation());
+        }
+        if (request.getStorageLocation() != null) {
+            receipt.setStorageLocation(request.getStorageLocation());
+        }
+        if (request.getExpiryDate() != null) {
+            // 有效期延长：新有效期必须晚于当前有效期
+            if (receipt.getExpiryDate() != null &&
+                request.getExpiryDate().isBefore(receipt.getExpiryDate())) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "新有效期必须晚于或等于当前有效期");
+            }
+            receipt.setExpiryDate(request.getExpiryDate());
+            log.info("有效期延长: {} -> {}", beforeValue.get("expiryDate"), request.getExpiryDate());
+        }
+        if (request.getRemarks() != null) {
+            receipt.setRemarks(request.getRemarks());
+        }
+
+        receipt.setUpdatedBy(operatorId);
+
+        // 保存仓单
+        ElectronicWarehouseReceipt updated = repository.save(receipt);
+
+        // ==================== 第5步：记录变更后的值 ====================
+        java.util.Map<String, Object> afterValue = new java.util.HashMap<>();
+
+        if (request.getUnitPrice() != null) {
+            afterValue.put("unitPrice", updated.getUnitPrice());
+            afterValue.put("totalValue", updated.getTotalValue()); // 总价值也变了
+        }
+        if (request.getMarketPrice() != null) {
+            afterValue.put("marketPrice", updated.getMarketPrice());
+        }
+        if (request.getWarehouseLocation() != null) {
+            afterValue.put("warehouseLocation", updated.getWarehouseLocation());
+        }
+        if (request.getStorageLocation() != null) {
+            afterValue.put("storageLocation", updated.getStorageLocation());
+        }
+        if (request.getExpiryDate() != null) {
+            afterValue.put("expiryDate", updated.getExpiryDate());
+        }
+        if (request.getRemarks() != null) {
+            afterValue.put("remarks", updated.getRemarks());
+        }
+
+        // ==================== 第6步：创建变更历史记录 ====================
+        com.fisco.app.entity.warehouse.ReceiptChangeHistory history =
+            new com.fisco.app.entity.warehouse.ReceiptChangeHistory();
+        history.setId(java.util.UUID.randomUUID().toString());
+        history.setReceiptId(updated.getId());
+        history.setReceiptNo(updated.getReceiptNo());
+        history.setChangeType(request.getChangeType().name());
+        history.setChangeReason(request.getChangeReason());
+
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            history.setBeforeValue(mapper.writeValueAsString(beforeValue));
+            history.setAfterValue(mapper.writeValueAsString(afterValue));
+            history.setChangedFields(mapper.writeValueAsString(changedFields));
+        } catch (Exception e) {
+            log.error("转换变更数据为JSON失败", e);
+            throw new com.fisco.app.exception.BusinessException("变更数据格式错误");
+        }
+
+        history.setOperatorId(operatorId);
+        history.setOperatorName(operatorName);
+        history.setChangeTime(java.time.LocalDateTime.now());
+        history.setRemarks(request.getRemarks());
+
+        changeHistoryRepository.save(history);
+
+        log.info("仓单更新成功（已记录变更历史）: id={}, changedFields={}",
+            updated.getId(), changedFields);
+
+        return ElectronicWarehouseReceiptResponse.fromEntity(updated);
+    }
+
+    /**
+     * 查询仓单变更历史
+     *
+     * @param receiptId 仓单ID
+     * @return 变更历史列表
+     */
+    public java.util.List<com.fisco.app.entity.warehouse.ReceiptChangeHistory> getReceiptChangeHistory(
+            @NonNull String receiptId) {
+
+        log.info("查询仓单变更历史: receiptId={}", receiptId);
+
+        // ==================== 权限验证 ====================
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth instanceof UserAuthentication)) {
+            throw new com.fisco.app.exception.BusinessException("无效的认证信息");
+        }
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        // 验证仓单是否存在并检查权限
+        ElectronicWarehouseReceipt receipt = repository.findById(receiptId)
+                .orElseThrow(() -> new com.fisco.app.exception.BusinessException("仓单不存在: " + receiptId));
+
+        // 只有货主企业、仓储企业或系统管理员可以查询变更历史
+        if (!userAuth.getEnterpriseId().equals(receipt.getOwnerId()) &&
+            !userAuth.getEnterpriseId().equals(receipt.getWarehouseId()) &&
+            !userAuth.isSystemAdmin()) {
+            throw new com.fisco.app.exception.BusinessException("无权限查询此仓单的变更历史");
+        }
+
+        java.util.List<com.fisco.app.entity.warehouse.ReceiptChangeHistory> history =
+                changeHistoryRepository.findByReceiptIdOrderByChangeTimeDesc(receiptId);
+
+        log.info("找到 {} 条变更历史记录", history.size());
+
+        return history;
+    }
+
+    /**
      * 根据ID查询仓单
      */
     public ElectronicWarehouseReceiptResponse getReceiptById(@NonNull String id) {
@@ -2237,5 +2445,600 @@ public class ElectronicWarehouseReceiptService {
         }
 
         log.info("作废请求验证通过");
+    }
+
+    // ==================== 仓单合并功能 ====================
+
+    @Autowired
+    private com.fisco.app.repository.warehouse.ReceiptMergeApplicationRepository mergeApplicationRepository;
+
+    @Autowired
+    private com.fisco.app.repository.warehouse.ReceiptChangeHistoryRepository changeHistoryRepository;
+
+    /**
+     * 提交仓单合并申请
+     *
+     * @param request 合并请求
+     * @param applicantId 申请人ID
+     * @param applicantName 申请人姓名
+     * @return 合并申请响应
+     */
+    @Transactional
+    @SuppressWarnings("null")
+    public com.fisco.app.dto.warehouse.ReceiptMergeResponse submitMergeApplication(
+            com.fisco.app.dto.warehouse.MergeReceiptsRequest request,
+            String applicantId,
+            String applicantName) {
+
+        log.info("提交仓单合并申请: receiptCount={}, mergeType={}, applicant={}",
+            request.getReceiptIds().size(), request.getMergeType(), applicantName);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // ==================== 第1步：权限验证 ====================
+        if (!(auth instanceof UserAuthentication)) {
+            throw new com.fisco.app.exception.BusinessException("无效的认证信息");
+        }
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        // ==================== 第2步：查询并验证源仓单 ====================
+        if (request.getReceiptIds().size() < 2 || request.getReceiptIds().size() > 10) {
+            throw new com.fisco.app.exception.BusinessException("合并仓单数量必须在2-10个之间");
+        }
+
+        // 验证源仓单ID是否有重复
+        long distinctCount = request.getReceiptIds().stream().distinct().count();
+        if (distinctCount != request.getReceiptIds().size()) {
+            throw new com.fisco.app.exception.BusinessException("源仓单ID列表中存在重复ID");
+        }
+
+        java.util.List<ElectronicWarehouseReceipt> sourceReceipts = new java.util.ArrayList<>();
+        String firstOwnerId = null;
+
+        for (String receiptId : request.getReceiptIds()) {
+            ElectronicWarehouseReceipt receipt = repository.findById(receiptId)
+                .orElseThrow(() -> new com.fisco.app.exception.BusinessException("仓单不存在: " + receiptId));
+
+            // 验证状态：所有仓单必须为NORMAL状态
+            if (receipt.getReceiptStatus() != ElectronicWarehouseReceipt.ReceiptStatus.NORMAL) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "仓单" + receipt.getReceiptNo() + "状态不正常，当前状态: " + receipt.getReceiptStatus());
+            }
+
+            // 验证所有权：所有仓单必须属于同一货主企业
+            if (firstOwnerId == null) {
+                firstOwnerId = receipt.getOwnerId();
+            } else if (!firstOwnerId.equals(receipt.getOwnerId())) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "所有仓单必须属于同一货主企业");
+            }
+
+            // 验证持单人权限
+            permissionChecker.checkHolderPermission(
+                auth,
+                receipt.getHolderAddress(),
+                "申请合并仓单"
+            );
+
+            // 验证是否是货主企业
+            if (!userAuth.getEnterpriseId().equals(receipt.getOwnerId())) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "只有货主企业可以申请合并仓单");
+            }
+
+            // 检查是否有待处理的合并申请
+            if (mergeApplicationRepository.existsByRequestStatusAndSourceReceiptIdsContaining(
+                "PENDING", receiptId)) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "仓单" + receipt.getReceiptNo() + "已有待审核的合并申请，请勿重复提交");
+            }
+
+            sourceReceipts.add(receipt);
+        }
+
+        // ==================== 第3步：验证合并类型和业务规则 ====================
+        validateMergeRequest(sourceReceipts, request.getMergeType());
+
+        // ==================== 第4步：计算合并后的数量和价值 ====================
+        BigDecimal totalQuantity = sourceReceipts.stream()
+            .map(ElectronicWarehouseReceipt::getQuantity)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalValue = sourceReceipts.stream()
+            .map(ElectronicWarehouseReceipt::getTotalValue)
+            .filter(Objects::nonNull)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // ==================== 第5步：创建合并申请 ====================
+        com.fisco.app.entity.warehouse.ReceiptMergeApplication application =
+            new com.fisco.app.entity.warehouse.ReceiptMergeApplication();
+        application.setId(java.util.UUID.randomUUID().toString());
+
+        // 将源仓单ID列表转换为JSON存储
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            application.setSourceReceiptIds(mapper.writeValueAsString(request.getReceiptIds()));
+
+            // 构建合并明细
+            java.util.Map<String, Object> mergeDetails = new java.util.HashMap<>();
+            mergeDetails.put("sourceReceipts", sourceReceipts.stream()
+                .map(r -> {
+                    java.util.Map<String, Object> info = new java.util.HashMap<>();
+                    info.put("id", r.getId());
+                    info.put("receiptNo", r.getReceiptNo());
+                    info.put("quantity", r.getQuantity());
+                    info.put("totalValue", r.getTotalValue());
+                    info.put("goodsName", r.getGoodsName());
+                    return info;
+                })
+                .collect(java.util.stream.Collectors.toList()));
+            mergeDetails.put("totalQuantity", totalQuantity);
+            mergeDetails.put("totalValue", totalValue);
+            mergeDetails.put("mergeType", request.getMergeType().name());
+
+            application.setMergeDetails(mapper.writeValueAsString(mergeDetails));
+        } catch (Exception e) {
+            log.error("转换合并详情为JSON失败", e);
+            throw new com.fisco.app.exception.BusinessException("合并详情格式错误");
+        }
+
+        application.setMergeType(request.getMergeType().name());
+        application.setTotalQuantity(totalQuantity);
+        application.setTotalValue(totalValue);
+        application.setRequestStatus("PENDING");
+        application.setApplicantId(applicantId);
+        application.setApplicantName(applicantName);
+        application.setRemarks(request.getRemarks());
+
+        // 保存申请
+        com.fisco.app.entity.warehouse.ReceiptMergeApplication savedApp = mergeApplicationRepository.save(application);
+
+        log.info("合并申请创建成功: applicationId={}, sourceReceiptCount={}, totalValue={}",
+            savedApp.getId(), request.getReceiptIds().size(), totalValue);
+
+        // 构建响应
+        return buildMergeResponse(savedApp, sourceReceipts, null, "success", "仓单合并申请已提交");
+    }
+
+    /**
+     * 审核仓单合并申请
+     *
+     * @param request 审核请求
+     * @param reviewerId 审核人ID
+     * @param reviewerName 审核人姓名
+     * @return 审核响应
+     */
+    @Transactional
+    @SuppressWarnings("null")
+    public com.fisco.app.dto.warehouse.ReceiptMergeResponse approveMergeApplication(
+            com.fisco.app.dto.warehouse.MergeApprovalRequest request,
+            String reviewerId,
+            String reviewerName) {
+
+        log.info("审核仓单合并申请: applicationId={}, reviewer={}, result={}",
+            request.getApplicationId(), reviewerName, request.getApproved());
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        // ==================== 第1步：查询申请和源仓单 ====================
+        com.fisco.app.entity.warehouse.ReceiptMergeApplication application =
+            mergeApplicationRepository.findById(request.getApplicationId())
+                .orElseThrow(() -> new com.fisco.app.exception.BusinessException("合并申请不存在"));
+
+        // 解析源仓单ID列表
+        java.util.List<String> sourceReceiptIds;
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            sourceReceiptIds = mapper.readValue(application.getSourceReceiptIds(),
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
+        } catch (Exception e) {
+            log.error("解析源仓单ID列表失败", e);
+            throw new com.fisco.app.exception.BusinessException("源仓单ID列表格式错误");
+        }
+
+        java.util.List<ElectronicWarehouseReceipt> sourceReceipts = new java.util.ArrayList<>();
+        for (String receiptId : sourceReceiptIds) {
+            ElectronicWarehouseReceipt receipt = repository.findById(receiptId)
+                .orElseThrow(() -> new com.fisco.app.exception.BusinessException("源仓单不存在: " + receiptId));
+            sourceReceipts.add(receipt);
+        }
+
+        // ==================== 第2步：权限验证 ====================
+        if (!(auth instanceof UserAuthentication)) {
+            throw new com.fisco.app.exception.BusinessException("无效的认证信息");
+        }
+        UserAuthentication userAuth = (UserAuthentication) auth;
+
+        // 系统管理员可以审核所有合并申请
+        ElectronicWarehouseReceipt firstReceipt = sourceReceipts.get(0);
+        if (!userAuth.isSystemAdmin() &&
+            !userAuth.getEnterpriseId().equals(firstReceipt.getWarehouseId())) {
+            throw new com.fisco.app.exception.BusinessException("无权限审核此合并申请");
+        }
+
+        // ==================== 第3步：状态验证 ====================
+        if (!"PENDING".equals(application.getRequestStatus())) {
+            throw new com.fisco.app.exception.BusinessException(
+                "该合并申请已被" + application.getRequestStatus() + "，无法重复审核");
+        }
+
+        for (ElectronicWarehouseReceipt receipt : sourceReceipts) {
+            if (receipt.getReceiptStatus() != ElectronicWarehouseReceipt.ReceiptStatus.NORMAL) {
+                throw new com.fisco.app.exception.BusinessException(
+                    "仓单" + receipt.getReceiptNo() + "状态已变更，无法合并。当前状态: " + receipt.getReceiptStatus());
+            }
+        }
+
+        // ==================== 第4步：处理审核结果 ====================
+        if (Boolean.TRUE.equals(request.getApproved())) {
+            // 审核通过，执行合并
+            return executeMerge(application, sourceReceipts, reviewerId, reviewerName);
+        } else {
+            // 审核拒绝
+            application.setRequestStatus("REJECTED");
+            application.setReviewerId(reviewerId);
+            application.setReviewerName(reviewerName);
+            application.setReviewTime(java.time.LocalDateTime.now());
+            application.setReviewComments(request.getReviewComments());
+            mergeApplicationRepository.save(application);
+
+            log.info("合并申请审核拒绝: applicationId={}, reason={}",
+                application.getId(), request.getReviewComments());
+
+            return buildMergeResponse(application, sourceReceipts, null, "rejected",
+                request.getReviewComments() != null ? request.getReviewComments() : "未填写原因");
+        }
+    }
+
+    /**
+     * 执行仓单合并
+     */
+    @SuppressWarnings("null")
+    private com.fisco.app.dto.warehouse.ReceiptMergeResponse executeMerge(
+            com.fisco.app.entity.warehouse.ReceiptMergeApplication application,
+            java.util.List<ElectronicWarehouseReceipt> sourceReceipts,
+            String reviewerId,
+            String reviewerName) {
+
+        log.info("开始执行仓单合并: sourceReceiptCount={}, totalValue={}",
+            sourceReceipts.size(), application.getTotalValue());
+
+        try {
+            // ==================== 第1步：更新源仓单状态为MERGING ====================
+            for (ElectronicWarehouseReceipt receipt : sourceReceipts) {
+                receipt.setReceiptStatus(ElectronicWarehouseReceipt.ReceiptStatus.MERGING);
+                repository.save(receipt);
+                log.info("源仓单状态更新为MERGING: receiptId={}", receipt.getId());
+            }
+
+            // ==================== 第2步：创建合并后的仓单 ====================
+            ElectronicWarehouseReceipt mergedReceipt = new ElectronicWarehouseReceipt();
+            mergedReceipt.setId(java.util.UUID.randomUUID().toString());
+
+            // 生成新的仓单编号（使用M前缀标识合并仓单）
+            String receiptNo = generateMergeReceiptNo(sourceReceipts.size());
+            mergedReceipt.setReceiptNo(receiptNo);
+
+            // 继承第一个源仓单的基本信息
+            ElectronicWarehouseReceipt firstReceipt = sourceReceipts.get(0);
+            mergedReceipt.setOwnerId(firstReceipt.getOwnerId());
+            mergedReceipt.setOwnerName(firstReceipt.getOwnerName());
+            mergedReceipt.setWarehouseId(firstReceipt.getWarehouseId());
+            mergedReceipt.setWarehouseName(firstReceipt.getWarehouseName());
+            mergedReceipt.setWarehouseLocation(firstReceipt.getWarehouseLocation());
+            mergedReceipt.setStorageLocation(firstReceipt.getStorageLocation());
+
+            // 合并货物信息
+            mergedReceipt.setGoodsName(firstReceipt.getGoodsName());
+            mergedReceipt.setGoodsType(firstReceipt.getGoodsType());
+            mergedReceipt.setQuantity(application.getTotalQuantity());
+            mergedReceipt.setUnit(firstReceipt.getUnit());
+            mergedReceipt.setUnitPrice(firstReceipt.getUnitPrice());
+            mergedReceipt.setTotalValue(application.getTotalValue());
+            mergedReceipt.setMarketPrice(firstReceipt.getMarketPrice());
+
+            // 设置日期信息
+            mergedReceipt.setWarehouseEntryDate(firstReceipt.getWarehouseEntryDate());
+            mergedReceipt.setExpiryDate(firstReceipt.getExpiryDate());
+
+            // 设置持有人信息
+            mergedReceipt.setHolderAddress(firstReceipt.getHolderAddress());
+
+            // 设置合并相关信息
+            mergedReceipt.setMergeCount(sourceReceipts.size());
+            mergedReceipt.setMergeTime(java.time.LocalDateTime.now());
+            mergedReceipt.setSourceReceiptIds(application.getSourceReceiptIds());
+
+            // 设置状态
+            mergedReceipt.setReceiptStatus(ElectronicWarehouseReceipt.ReceiptStatus.NORMAL);
+            mergedReceipt.setBlockchainStatus(ElectronicWarehouseReceipt.BlockchainStatus.PENDING);
+
+            // 设置创建人信息
+            mergedReceipt.setCreatedBy(reviewerId);
+            mergedReceipt.setUpdatedBy(reviewerId);
+
+            // 保存合并仓单
+            ElectronicWarehouseReceipt savedMergedReceipt = repository.save(mergedReceipt);
+
+            log.info("合并仓单创建成功: mergedReceiptId={}, receiptNo={}, mergeCount={}",
+                savedMergedReceipt.getId(), savedMergedReceipt.getReceiptNo(), sourceReceipts.size());
+
+            // ==================== 第3步：更新源仓单状态为MERGED ====================
+            for (ElectronicWarehouseReceipt receipt : sourceReceipts) {
+                receipt.setReceiptStatus(ElectronicWarehouseReceipt.ReceiptStatus.MERGED);
+                repository.save(receipt);
+                log.info("源仓单状态更新为MERGED: receiptId={}", receipt.getId());
+            }
+
+            // ==================== 第4步：更新合并申请状态 ====================
+            application.setRequestStatus("APPROVED");
+            application.setMergedReceiptId(savedMergedReceipt.getId());
+            application.setReviewerId(reviewerId);
+            application.setReviewerName(reviewerName);
+            application.setReviewTime(java.time.LocalDateTime.now());
+            mergeApplicationRepository.save(application);
+
+            log.info("合并执行完成: applicationId={}, mergedReceiptId={}",
+                application.getId(), savedMergedReceipt.getId());
+
+            // 构建响应
+            return buildMergeResponse(application, sourceReceipts,
+                convertToResponse(savedMergedReceipt), "success", "仓单合并成功");
+
+        } catch (Exception e) {
+            log.error("执行仓单合并失败", e);
+            // 回滚源仓单状态
+            for (ElectronicWarehouseReceipt receipt : sourceReceipts) {
+                if (receipt.getReceiptStatus() == ElectronicWarehouseReceipt.ReceiptStatus.MERGING) {
+                    receipt.setReceiptStatus(ElectronicWarehouseReceipt.ReceiptStatus.NORMAL);
+                    repository.save(receipt);
+                }
+            }
+            throw new com.fisco.app.exception.BusinessException("仓单合并失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 生成合并仓单编号
+     */
+    private String generateMergeReceiptInfo(int sourceCount) {
+        // 格式: MERGE-YYYYMMDD-序号
+        String dateStr = java.time.LocalDateTime.now().format(
+            java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomStr = java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return "MERGE-" + dateStr + "-" + randomStr;
+    }
+
+    /**
+     * 生成合并仓单编号
+     */
+    private String generateMergeReceiptNo(int sourceCount) {
+        return generateMergeReceiptInfo(sourceCount);
+    }
+
+    /**
+     * 验证合并请求
+     */
+    private void validateMergeRequest(
+            java.util.List<ElectronicWarehouseReceipt> sourceReceipts,
+            com.fisco.app.entity.warehouse.ReceiptMergeApplication.MergeType mergeType) {
+
+        log.info("验证合并请求: receiptCount={}, mergeType={}",
+            sourceReceipts.size(), mergeType);
+
+        // 数量合并：验证货物名称、单位、单价必须相同
+        if (mergeType == com.fisco.app.entity.warehouse.ReceiptMergeApplication.MergeType.QUANTITY) {
+            String goodsName = sourceReceipts.get(0).getGoodsName();
+            String unit = sourceReceipts.get(0).getUnit();
+            BigDecimal unitPrice = sourceReceipts.get(0).getUnitPrice();
+
+            for (int i = 1; i < sourceReceipts.size(); i++) {
+                ElectronicWarehouseReceipt receipt = sourceReceipts.get(i);
+                if (!java.util.Objects.equals(goodsName, receipt.getGoodsName())) {
+                    throw new com.fisco.app.exception.BusinessException(
+                        "数量合并要求所有仓单的货物名称必须相同");
+                }
+                if (!java.util.Objects.equals(unit, receipt.getUnit())) {
+                    throw new com.fisco.app.exception.BusinessException(
+                        "数量合并要求所有仓单的单位必须相同");
+                }
+                if (unitPrice != null && receipt.getUnitPrice() != null &&
+                    unitPrice.compareTo(receipt.getUnitPrice()) != 0) {
+                    throw new com.fisco.app.exception.BusinessException(
+                        "数量合并要求所有仓单的单价必须相同");
+                }
+            }
+        }
+
+        log.info("合并请求验证通过");
+    }
+
+    /**
+     * 构建合并响应
+     */
+    @SuppressWarnings("null")
+    private com.fisco.app.dto.warehouse.ReceiptMergeResponse buildMergeResponse(
+            com.fisco.app.entity.warehouse.ReceiptMergeApplication application,
+            java.util.List<ElectronicWarehouseReceipt> sourceReceipts,
+            com.fisco.app.dto.warehouse.ElectronicWarehouseReceiptResponse mergedReceipt,
+            String result,
+            String message) {
+
+        com.fisco.app.dto.warehouse.ReceiptMergeResponse response =
+            new com.fisco.app.dto.warehouse.ReceiptMergeResponse();
+
+        response.setApplicationId(application.getId());
+        response.setRequestStatus(application.getRequestStatus());
+        response.setMergeType(com.fisco.app.entity.warehouse.ReceiptMergeApplication.MergeType.valueOf(
+            application.getMergeType()));
+        response.setTotalQuantity(application.getTotalQuantity());
+        response.setTotalValue(application.getTotalValue());
+        response.setMergeCount(sourceReceipts.size());
+
+        response.setSourceReceipts(sourceReceipts.stream()
+            .map(this::convertToResponse)
+            .collect(java.util.stream.Collectors.toList()));
+
+        response.setMergedReceipt(mergedReceipt);
+        response.setApplicantId(application.getApplicantId());
+        response.setApplicationTime(application.getCreatedAt());
+        response.setReviewerId(application.getReviewerId());
+        response.setReviewTime(application.getReviewTime());
+        response.setRejectionReason(application.getReviewComments());
+        response.setResult(result);
+        response.setMessage(message);
+
+        return response;
+    }
+
+    /**
+     * 查询待审核的合并申请
+     */
+    @SuppressWarnings("null")
+    public java.util.List<com.fisco.app.entity.warehouse.ReceiptMergeApplication> getPendingMergeApplications() {
+        log.info("查询待审核的仓单合并申请");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (!(auth instanceof UserAuthentication)) {
+            throw new com.fisco.app.exception.BusinessException("无效的认证信息");
+        }
+
+        UserAuthentication userAuth = (UserAuthentication) auth;
+        java.util.List<com.fisco.app.entity.warehouse.ReceiptMergeApplication> applications;
+
+        // 系统管理员可以查看所有待审核申请
+        if (userAuth.isSystemAdmin()) {
+            applications = mergeApplicationRepository.findByRequestStatus("PENDING");
+            log.info("管理员查询所有待审核的合并申请");
+        }
+        // 仓储企业只能查询自己仓单的待审核申请
+        else if (userAuth.getEnterpriseId() != null) {
+            // 查询所有PENDING状态的申请，然后过滤出属于该仓储企业的
+            applications = mergeApplicationRepository.findByRequestStatus("PENDING")
+                .stream()
+                .filter(app -> {
+                    try {
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        java.util.List<String> sourceIds = mapper.readValue(app.getSourceReceiptIds(),
+                            new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
+                        return sourceIds.stream().anyMatch(id -> {
+                            return repository.findById(id).map(receipt ->
+                                userAuth.getEnterpriseId().equals(receipt.getWarehouseId())).orElse(false);
+                        });
+                    } catch (Exception e) {
+                        log.error("解析源仓单ID列表失败", e);
+                        return false;
+                    }
+                })
+                .collect(java.util.stream.Collectors.toList());
+            log.info("仓储企业查询待审核的合并申请: warehouseId={}", userAuth.getEnterpriseId());
+        } else {
+            throw new com.fisco.app.exception.BusinessException("无权限查询待审核的合并申请");
+        }
+
+        log.info("找到 {} 个待审核的合并申请", applications.size());
+
+        return applications;
+    }
+
+    /**
+     * 将 ElectronicWarehouseReceipt 实体转换为 Response DTO
+     *
+     * @param receipt 仓单实体
+     * @return 响应DTO
+     */
+    private ElectronicWarehouseReceiptResponse convertToResponse(ElectronicWarehouseReceipt receipt) {
+        if (receipt == null) {
+            return null;
+        }
+
+        ElectronicWarehouseReceiptResponse response = new ElectronicWarehouseReceiptResponse();
+
+        // 基础信息
+        response.setId(receipt.getId());
+        response.setReceiptNo(receipt.getReceiptNo());
+        response.setWarehouseId(receipt.getWarehouseId());
+        response.setWarehouseAddress(receipt.getWarehouseAddress());
+        response.setWarehouseName(receipt.getWarehouseName());
+        response.setOwnerId(receipt.getOwnerId());
+        response.setOwnerAddress(receipt.getOwnerAddress());
+        response.setOwnerName(receipt.getOwnerName());
+        response.setHolderAddress(receipt.getHolderAddress());
+
+        // 货物信息
+        response.setGoodsName(receipt.getGoodsName());
+        response.setUnit(receipt.getUnit());
+        response.setQuantity(receipt.getQuantity());
+        response.setUnitPrice(receipt.getUnitPrice());
+        response.setTotalValue(receipt.getTotalValue());
+        response.setMarketPrice(receipt.getMarketPrice());
+
+        // 仓储信息
+        response.setWarehouseLocation(receipt.getWarehouseLocation());
+        response.setStorageLocation(receipt.getStorageLocation());
+        response.setStorageDate(receipt.getStorageDate());
+        response.setExpiryDate(receipt.getExpiryDate());
+        response.setActualDeliveryDate(receipt.getActualDeliveryDate());
+        response.setDeliveryPersonName(receipt.getDeliveryPersonName());
+        response.setDeliveryPersonContact(receipt.getDeliveryPersonContact());
+        response.setDeliveryNo(receipt.getDeliveryNo());
+        response.setVehiclePlate(receipt.getVehiclePlate());
+        response.setDriverName(receipt.getDriverName());
+
+        // 状态管理
+        response.setReceiptStatus(receipt.getReceiptStatus() != null ? receipt.getReceiptStatus().name() : null);
+        response.setParentReceiptId(receipt.getParentReceiptId());
+        response.setBatchNo(receipt.getBatchNo());
+
+        // 企业和操作人
+        response.setOwnerOperatorId(receipt.getOwnerOperatorId());
+        response.setOwnerOperatorName(receipt.getOwnerOperatorName());
+        response.setWarehouseOperatorId(receipt.getWarehouseOperatorId());
+        response.setWarehouseOperatorName(receipt.getWarehouseOperatorName());
+
+        // 融资信息
+        response.setIsFinanced(receipt.getIsFinanced());
+        response.setFinanceAmount(receipt.getFinanceAmount());
+        response.setFinanceRate(receipt.getFinanceRate());
+        response.setFinanceDate(receipt.getFinanceDate());
+        response.setFinancierAddress(receipt.getFinancierAddress());
+        response.setPledgeContractNo(receipt.getPledgeContractNo());
+
+        // 背书统计
+        response.setEndorsementCount(receipt.getEndorsementCount());
+        response.setLastEndorsementDate(receipt.getLastEndorsementDate());
+        response.setCurrentHolder(receipt.getCurrentHolder());
+
+        // 区块链
+        response.setTxHash(receipt.getTxHash());
+        response.setBlockchainStatus(receipt.getBlockchainStatus() != null ? receipt.getBlockchainStatus().name() : null);
+        response.setBlockNumber(receipt.getBlockNumber());
+        response.setBlockchainTimestamp(receipt.getBlockchainTimestamp());
+
+        // 其他
+        response.setRemarks(receipt.getRemarks());
+
+        // 拆分相关
+        response.setSplitTime(receipt.getSplitTime());
+        response.setSplitCount(receipt.getSplitCount());
+
+        // 作废相关
+        response.setCancelReason(receipt.getCancelReason());
+        response.setCancelType(receipt.getCancelType());
+        response.setCancelTime(receipt.getCancelTime());
+        response.setCancelledBy(receipt.getCancelledBy());
+        response.setReferenceNo(receipt.getReferenceNo());
+
+        // 审计
+        response.setCreatedAt(receipt.getCreatedAt());
+        response.setUpdatedAt(receipt.getUpdatedAt());
+        response.setCreatedBy(receipt.getCreatedBy());
+        response.setUpdatedBy(receipt.getUpdatedBy());
+        response.setDeletedAt(receipt.getDeletedAt());
+        response.setDeletedBy(receipt.getDeletedBy());
+
+        return response;
     }
 }
