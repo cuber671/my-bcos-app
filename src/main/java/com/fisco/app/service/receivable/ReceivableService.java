@@ -35,27 +35,59 @@ public class ReceivableService {
     private final EnterpriseService enterpriseService;
     private final ContractService contractService;
 
+    // ========== 敏感数据脱敏辅助方法 ==========
+
+    /**
+     * 脱敏区块链地址（只显示前6位和后4位）
+     */
+    private String maskAddress(String address) {
+        if (address == null || address.length() < 10) return "***";
+        return address.substring(0, 6) + "..." + address.substring(address.length() - 4);
+    }
+
+    /**
+     * 脱敏金额（只显示整数部分和2位小数，隐藏大额）
+     */
+    private String maskAmount(Object amount) {
+        if (amount == null) return "***";
+        String str = amount.toString();
+        // 对于BigDecimal或大额金额，只显示范围
+        try {
+            double value = Double.parseDouble(str);
+            if (value > 1000000) {
+                return ">1M";
+            } else if (value > 10000) {
+                return String.format("%.1fK", value / 1000);
+            }
+            return String.format("%.2f", value);
+        } catch (NumberFormatException e) {
+            return "***";
+        }
+    }
+
     /**
      * 创建应收账款
      */
     @Transactional(rollbackFor = Exception.class)
     public Receivable createReceivable(CreateReceivableRequest request, String supplierAddress) {
         log.info("==================== 应收账款创建开始 ====================");
+        // 敏感信息脱敏后记录到INFO级别
         log.info("应收账款基本信息: receivableId={}, amount={}, currency={}",
-                 request.getId(), request.getAmount(), request.getCurrency());
+                 request.getId(), maskAmount(request.getAmount()), request.getCurrency());
         log.info("参与方: supplier={}, coreEnterprise={}",
-                 supplierAddress, request.getCoreEnterpriseAddress());
+                 maskAddress(supplierAddress), maskAddress(request.getCoreEnterpriseAddress()));
         log.info("日期信息: issueDate={}, dueDate={}",
                  request.getIssueDate(), request.getDueDate());
 
         long startTime = System.currentTimeMillis();
 
         try {
-            // 检查应收账款ID是否已存在
-            log.debug("检查应收账款ID唯一性: receivableId={}", request.getId());
-            if (receivableRepository.findById(request.getId()).isPresent()) {
-                log.error("应收账款ID已存在: receivableId={}", request.getId());
-                throw new com.fisco.app.exception.BusinessException("应收账款ID已存在");
+            // 幂等性检查：如果应收账款已存在，返回现有记录
+            log.debug("检查应收账款幂等性: receivableId={}", request.getId());
+            if (receivableRepository.existsById(request.getId())) {
+                log.info("应收账款已存在，返回现有记录（幂等）: receivableId={}", request.getId());
+                return receivableRepository.findById(request.getId())
+                        .orElseThrow(() -> new com.fisco.app.exception.BusinessException("应收账款不存在"));
             }
             log.debug("✓ 应收账款ID唯一性检查通过");
 
@@ -512,15 +544,28 @@ public class ReceivableService {
         long startTime = System.currentTimeMillis();
 
         try {
-            // 1. 验证所有应收账款是否存在
+            // 1. 批量查询验证所有应收账款是否存在（修复N+1查询问题）
             java.util.List<Receivable> receivables = new java.util.ArrayList<>();
-            for (String id : request.getReceivableIds()) {
-                if (id != null) {
-                    Receivable r = receivableRepository.findById(id)
-                            .orElseThrow(() -> new com.fisco.app.exception.BusinessException("应收账款不存在: " + id));
-                    receivables.add(r);
-                }
+
+            // 使用批量查询代替循环查询，避免N+1问题
+            java.util.List<String> ids = request.getReceivableIds().stream()
+                    .filter(id -> id != null)
+                    .collect(java.util.stream.Collectors.toList());
+
+            java.util.List<Receivable> foundReceivables = receivableRepository.findAllById(ids);
+
+            // 验证是否所有ID都找到了
+            if (foundReceivables.size() != ids.size()) {
+                java.util.Set<String> foundIds = foundReceivables.stream()
+                        .map(Receivable::getId)
+                        .collect(java.util.stream.Collectors.toSet());
+                String missingIds = ids.stream()
+                        .filter(id -> !foundIds.contains(id))
+                        .collect(java.util.stream.Collectors.joining(", "));
+                throw new com.fisco.app.exception.BusinessException("应收账款不存在: " + missingIds);
             }
+
+            receivables.addAll(foundReceivables);
 
             // 2. 验证所有应收账款的状态
             for (Receivable r : receivables) {

@@ -3,9 +3,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -385,56 +391,59 @@ public class ReceivableOverdueService {
     }
 
     /**
-     * 查询坏账
+     * 查询坏账（数据库分页优化版）
      */
     @SuppressWarnings("nullness")
     public BadDebtQueryResponse queryBadDebts(BadDebtQueryRequest request, @org.springframework.lang.NonNull String userAddress) {
-        log.info("查询坏账: request={}, userAddress={}", request, userAddress);
+        log.info("查询坏账（数据库分页）: request={}, userAddress={}", request, userAddress);
 
-        // 查询所有坏账记录
-        List<BadDebtRecord> allBadDebts = badDebtRecordRepository.findAll();
+        // 1. 构建分页请求
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(),
+            Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        // 根据条件过滤
-        List<BadDebtRecord> filteredBadDebts = allBadDebts.stream()
+        // 2. 数据库分页查询（条件过滤在SQL中完成）
+        Page<BadDebtRecord> badDebtPage = badDebtRecordRepository.findBadDebtsByConditions(
+            request.getBadDebtType(),
+            request.getRecoveryStatus(),
+            request.getOverdueDaysMin(),
+            request.getCreatedDateStart(),
+            request.getCreatedDateEnd(),
+            pageable
+        );
+
+        // 3. 提取所有应收账款ID（批量查询）
+        List<String> receivableIds = badDebtPage.getContent().stream()
+            .map(BadDebtRecord::getReceivableId)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+        // 4. 批量查询应收账款信息（避免N+1查询）
+        Map<String, Receivable> receivableMap;
+        if (!receivableIds.isEmpty()) {
+            List<Receivable> receivables = receivableRepository.findAllById(receivableIds);
+            receivableMap = receivables.stream()
+                .collect(Collectors.toMap(Receivable::getId, Function.identity()));
+        } else {
+            receivableMap = new HashMap<>();
+        }
+
+        // 5. 构建DTO，同时进行权限过滤
+        List<BadDebtQueryResponse.BadDebtDTO> dtoList = badDebtPage.getContent().stream()
             .filter(record -> {
-                // 过滤条件
-                if (request.getBadDebtType() != null && !record.getBadDebtType().equals(request.getBadDebtType())) {
-                    return false;
-                }
-                if (request.getRecoveryStatus() != null && !record.getRecoveryStatus().equals(request.getRecoveryStatus())) {
-                    return false;
-                }
-                if (request.getOverdueDaysMin() != null && record.getOverdueDays() < request.getOverdueDaysMin()) {
-                    return false;
-                }
-                if (request.getCreatedDateStart() != null && record.getCreatedAt().isBefore(request.getCreatedDateStart())) {
-                    return false;
-                }
-                if (request.getCreatedDateEnd() != null && record.getCreatedAt().isAfter(request.getCreatedDateEnd())) {
-                    return false;
-                }
-                // 权限过滤：只能查看自己相关的坏账
-                if (userAddress != null) {
-                    String receivableId = record.getReceivableId();
-                    if (receivableId != null) {
-                        java.util.Optional<Receivable> receivableOpt = receivableRepository.findById(receivableId);
-                        if (receivableOpt.isPresent()) {
-                            Receivable receivable = receivableOpt.get();
-                            boolean isRelated = userAddress.equals(receivable.getSupplierAddress()) ||
-                                userAddress.equals(receivable.getFinancierAddress()) ||
-                                userAddress.equals(receivable.getCurrentHolder());
-                            if (!isRelated) {
-                                return false;
-                            }
-                        }
+                // 权限过滤
+                if (userAddress != null && record.getReceivableId() != null) {
+                    Receivable receivable = receivableMap.get(record.getReceivableId());
+                    if (receivable != null) {
+                        boolean isRelated = userAddress.equals(receivable.getSupplierAddress()) ||
+                            userAddress.equals(receivable.getFinancierAddress()) ||
+                            userAddress.equals(receivable.getCurrentHolder());
+                        return isRelated;
                     }
+                    return false;
                 }
                 return true;
             })
-            .collect(Collectors.toList());
-
-        // 转换为DTO
-        List<BadDebtQueryResponse.BadDebtDTO> dtoList = filteredBadDebts.stream()
             .map(record -> {
                 BadDebtQueryResponse.BadDebtDTO dto = new BadDebtQueryResponse.BadDebtDTO();
                 dto.setId(record.getId());
@@ -450,39 +459,31 @@ public class ReceivableOverdueService {
                 dto.setRecoveryDate(record.getRecoveryDate());
                 dto.setCreatedAt(record.getCreatedAt());
 
-                // 获取供应商和资金方地址
-                String receivableId = record.getReceivableId();
-                if (receivableId != null) {
-                    java.util.Optional<Receivable> receivableOpt = receivableRepository.findById(receivableId);
-                    if (receivableOpt.isPresent()) {
-                        Receivable receivable = receivableOpt.get();
-                        dto.setSupplierAddress(receivable.getSupplierAddress());
-                        dto.setFinancierAddress(receivable.getFinancierAddress());
-                    }
+                // 从Map中获取应收账款信息（避免再次查询）
+                Receivable receivable = receivableMap.get(record.getReceivableId());
+                if (receivable != null) {
+                    dto.setSupplierAddress(receivable.getSupplierAddress());
+                    dto.setFinancierAddress(receivable.getFinancierAddress());
                 }
                 return dto;
             })
             .collect(Collectors.toList());
 
-        // 分页处理
-        int start = request.getPage() * request.getSize();
-        int end = Math.min(start + request.getSize(), dtoList.size());
-        List<BadDebtQueryResponse.BadDebtDTO> pageContent = dtoList.subList(start, end);
-
-        // 构建响应
+        // 6. 构建响应（使用分页信息）
         BadDebtQueryResponse response = new BadDebtQueryResponse();
-        response.setContent(pageContent);
-        response.setPageNumber(request.getPage());
-        response.setPageSize(request.getSize());
-        response.setTotalElements(dtoList.size());
-        response.setTotalPages((int) Math.ceil((double) dtoList.size() / request.getSize()));
-        response.setFirst(request.getPage() == 0);
-        response.setLast(end >= dtoList.size());
+        response.setContent(dtoList);
+        response.setPageNumber(badDebtPage.getNumber());
+        response.setPageSize(badDebtPage.getSize());
+        response.setTotalElements(badDebtPage.getTotalElements());
+        response.setTotalPages(badDebtPage.getTotalPages());
+        response.setFirst(badDebtPage.isFirst());
+        response.setLast(badDebtPage.isLast());
 
-        // 构建统计信息
+        // 7. 构建统计信息
         response.setStatistics(buildBadDebtStatistics(dtoList));
 
-        log.info("查询坏账完成: totalCount={}", dtoList.size());
+        log.info("查询坏账完成: totalCount={}, totalPages={}",
+            badDebtPage.getTotalElements(), badDebtPage.getTotalPages());
         return response;
     }
 

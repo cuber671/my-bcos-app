@@ -26,95 +26,30 @@ CREATE TABLE IF NOT EXISTS `admin` (
     KEY `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员表';
 
--- 插入默认管理员账户
--- 密码为: admin123（BCrypt加密后的值）
--- 用户名为: admin
--- 角色为: SUPER_ADMIN（超级管理员）
-INSERT INTO `admin` (
-    `id`,
-    `username`,
-    `email`,
-    `real_name`,
-    `role`,
-    `status`,
-    `password`,
-    `remarks`,
-    `created_at`,
-    `updated_at`,
-    `created_by`
-) VALUES (
-    UUID(),
-    'admin',
-    'admin@system.com',
-    '系统管理员',
-    'SUPER_ADMIN',
-    'ACTIVE',
-    '$2a$12$vbEz3HPDEzYFTDFnvd9I/.cHxC5P5y0Cc7TqrbzrnxtllvhMWrBoS',
-    '系统默认超级管理员账户',
-    NOW(),
-    NOW(),
-    'system'
-) ON DUPLICATE KEY UPDATE `updated_at` = NOW();
-
--- 插入测试审核员账户
--- 密码为: auditor123
--- 用户名为: auditor
--- 角色为: AUDITOR（审核员）
-INSERT INTO `admin` (
-    `id`,
-    `username`,
-    `email`,
-    `real_name`,
-    `role`,
-    `status`,
-    `password`,
-    `remarks`,
-    `created_at`,
-    `updated_at`,
-    `created_by`
-) VALUES (
-    UUID(),
-    'auditor',
-    'auditor@system.com',
-    '测试审核员',
-    'AUDITOR',
-    'ACTIVE',
-    '$2a$12$ThH2U92L1Rnqaq0DJuiYE.Tkx2pYzoewv1NXoTsOsyBKw8hmMvyXu',
-    '测试审核员账户',
-    NOW(),
-    NOW(),
-    'admin'
-) ON DUPLICATE KEY UPDATE `updated_at` = NOW();
-
--- 插入测试管理员账户
--- 密码为: manager123
--- 用户名为: manager
--- 角色为: ADMIN（管理员）
-INSERT INTO `admin` (
-    `id`,
-    `username`,
-    `email`,
-    `real_name`,
-    `role`,
-    `status`,
-    `password`,
-    `remarks`,
-    `created_at`,
-    `updated_at`,
-    `created_by`
-) VALUES (
-    UUID(),
-    'manager',
-    'manager@system.com',
-    '测试管理员',
-    'ADMIN',
-    'ACTIVE',
-    '$2a$12$6OueNFiUop.1iIQUvVoR7eZIGrZx8HvTem2EPr89aychqy/e1ruOW',
-    '测试管理员账户',
-    NOW(),
-    NOW(),
-    'admin'
-) ON DUPLICATE KEY UPDATE `updated_at` = NOW();
+-- ============================================================================
+-- SECURITY WARNING: Default accounts removed for production security
+-- ============================================================================
+-- The default admin accounts (admin/admin123, auditor/auditor123, manager/manager123)
+-- have been removed from this script for security reasons.
+--
+-- For production deployment:
+-- 1. Create admin accounts programmatically during first-time setup
+-- 2. Enforce strong password policy (min 12 chars, uppercase, lowercase, numbers, symbols)
+-- 3. Force password change on first login
+-- 4. Use unique randomly generated passwords for each environment
+--
+-- For development/testing only:
+-- If you need to create test accounts, use the commands below:
+--
+-- -- Create SUPER_ADMIN account (password: Admin@123456)
+-- INSERT INTO `admin` (`id`, `username`, `email`, `real_name`, `role`, `status`, `password`, `remarks`, `created_at`, `updated_at`, `created_by`)
+-- VALUES (UUID(), 'admin', 'admin@localhost', 'Development Admin', 'SUPER_ADMIN', 'ACTIVE',
+--         '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLaEmc0W', -- Admin@123456
+--         'Development only - REMOVE IN PRODUCTION', NOW(), NOW(), 'system')
+-- ON DUPLICATE KEY UPDATE `updated_at` = NOW();
+--
+-- IMPORTANT: These test accounts MUST be removed before production deployment!
+-- ============================================================================
 
 -- 创建索引（如果不存在）
 -- 注意：MySQL 5.7 以下版本不支持 CREATE INDEX IF NOT EXISTS

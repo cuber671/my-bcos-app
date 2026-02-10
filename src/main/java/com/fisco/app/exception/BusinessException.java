@@ -79,4 +79,24 @@ public class BusinessException extends RuntimeException {
             super(404, message);
         }
     }
+
+    // ==================== 合约相关异常 ====================
+
+    public static class ContractNotFoundException extends BusinessException {
+        public ContractNotFoundException(String address) {
+            super(404, "合约不存在: " + address);
+        }
+    }
+
+    public static class InvalidContractAbiException extends BusinessException {
+        public InvalidContractAbiException(String message) {
+            super(400, "合约ABI格式错误: " + message);
+        }
+    }
+
+    public static class ContractDeploymentFailedException extends BusinessException {
+        public ContractDeploymentFailedException(String message) {
+            super(500, "合约部署失败: " + message);
+        }
+    }
 }

@@ -555,7 +555,7 @@ public class BillService {
      * 票据到期处理
      * 自动处理到期票据，计算利息并更新状态
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RepayBillResponse handleBillMaturity(@NonNull String billId) {
         log.info("处理票据到期: billId={}", billId);
 
@@ -656,7 +656,7 @@ public class BillService {
      * 票据还款
      * 支持主动还款（提前或逾期）
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public RepayBillResponse repayBill(@NonNull String billId, RepayBillRequest request, String payerAddress) {
         log.info("票据还款: billId={}, payer={}, amount={}, type={}",
             billId, payerAddress, request.getPaymentAmount(), request.getPaymentType());
@@ -818,7 +818,7 @@ public class BillService {
     /**
      * 作废票据
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Bill cancelBill(@NonNull String billId, com.fisco.app.dto.bill.CancelBillRequest request, String operatorAddress) {
         log.info("==================== 票据作废开始 ====================");
         log.info("票据ID: {}, 操作人: {}", billId, operatorAddress);
@@ -876,7 +876,7 @@ public class BillService {
     /**
      * 冻结票据
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Bill freezeBill(@NonNull String billId, com.fisco.app.dto.bill.FreezeBillRequest request, String operatorAddress) {
         log.info("==================== 票据冻结开始 ====================");
         log.info("票据ID: {}, 操作人: {}", billId, operatorAddress);
@@ -900,6 +900,13 @@ public class BillService {
                 throw new com.fisco.app.exception.BusinessException("已结算或已作废的票据不能冻结");
             }
             log.debug("✓ 状态验证通过");
+
+            // 验证操作权限
+            log.debug("验证操作权限");
+            if (!bill.getCurrentHolderAddress().equals(operatorAddress)) {
+                throw new com.fisco.app.exception.BusinessException("只有当前持票人可以冻结票据");
+            }
+            log.debug("✓ 权限验证通过");
 
             // 更新票据状态为FROZEN
             log.debug("更新票据状态: {} -> FROZEN", bill.getBillStatus());
@@ -928,7 +935,7 @@ public class BillService {
     /**
      * 解冻票据
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Bill unfreezeBill(@NonNull String billId, com.fisco.app.dto.bill.UnfreezeBillRequest request, String operatorAddress) {
         log.info("==================== 票据解冻开始 ====================");
         log.info("票据ID: {}, 操作人: {}", billId, operatorAddress);
@@ -947,6 +954,13 @@ public class BillService {
                 throw new com.fisco.app.exception.BusinessException("只能解冻已冻结的票据");
             }
             log.debug("✓ 状态验证通过");
+
+            // 验证操作权限
+            log.debug("验证操作权限");
+            if (!bill.getCurrentHolderAddress().equals(operatorAddress)) {
+                throw new com.fisco.app.exception.BusinessException("只有当前持票人可以解冻票据");
+            }
+            log.debug("✓ 权限验证通过");
 
             // 恢复票据状态（根据备注信息推断之前的状态，或者默认为NORMAL）
             log.debug("恢复票据状态: FROZEN -> NORMAL");

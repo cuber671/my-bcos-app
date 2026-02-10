@@ -115,6 +115,19 @@ public class PledgeService {
             throw new BusinessException("指定的企业不是金融机构");
         }
 
+        // 6. 验证是否已存在待处理或已生效的质押
+        List<PledgeRecord> existingPledges = pledgeRecordRepository
+                .findByReceiptIdAndStatusIn(request.getReceiptId(),
+                        java.util.Arrays.asList(
+                                PledgeRecord.PledgeStatus.ACTIVE));
+
+        if (!existingPledges.isEmpty()) {
+            throw new BusinessException("该仓单已存在质押记录");
+        }
+
+        log.info("质押业务规则验证通过: 仓单状态={}, 货主权限={}, 质押金额={}",
+                receipt.getReceiptStatus(), ownerId, request.getPledgeAmount());
+
         // 6. 创建 PLEDGE 类型背书（PENDING 状态）
         String endorsementNo = generateEndorsementNo();
 

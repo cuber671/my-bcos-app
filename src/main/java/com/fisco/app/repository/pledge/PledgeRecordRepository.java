@@ -13,6 +13,9 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
  * 仓单质押记录Repository
  */
@@ -62,6 +65,11 @@ public interface PledgeRecordRepository extends JpaRepository<PledgeRecord, Long
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM PledgeRecord p " +
            "WHERE p.receiptId = :receiptId AND p.status = 'ACTIVE' AND p.deleted = false")
     boolean hasActivePledge(@Param("receiptId") String receiptId);
+
+    /**
+     * 根据仓单ID和状态列表查询质押记录
+     */
+    List<PledgeRecord> findByReceiptIdAndStatusIn(String receiptId, List<PledgeRecord.PledgeStatus> statuses);
 
     /**
      * 统计货主的质押记录数量

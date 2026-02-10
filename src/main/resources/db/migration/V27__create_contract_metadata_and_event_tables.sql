@@ -1,0 +1,52 @@
+-- 智能合约元数据表
+CREATE TABLE blockchain_contract_metadata (
+    id VARCHAR(36) PRIMARY KEY,
+    contract_address VARCHAR(42) NOT NULL UNIQUE COMMENT '合约地址',
+    contract_name VARCHAR(100) NOT NULL COMMENT '合约名称',
+    contract_type VARCHAR(50) NOT NULL COMMENT '合约类型',
+    contract_version VARCHAR(20) COMMENT '合约版本',
+    abi TEXT COMMENT '合约ABI（JSON格式）',
+    bytecode TEXT COMMENT '合约字节码',
+    source_code TEXT COMMENT '合约源代码',
+    compiler_version VARCHAR(50) COMMENT '编译器版本',
+    optimization_enabled BOOLEAN DEFAULT FALSE COMMENT '是否启用优化',
+    constructor_params TEXT COMMENT '构造函数参数（JSON格式）',
+    deploy_transaction_hash VARCHAR(66) COMMENT '部署交易哈希',
+    deployer_address VARCHAR(42) COMMENT '部署者地址',
+    deploy_block_number BIGINT COMMENT '部署区块号',
+    deployment_timestamp TIMESTAMP COMMENT '部署时间',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '状态',
+    description TEXT COMMENT '合约描述',
+    tags VARCHAR(500) COMMENT '标签',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_contract_address (contract_address),
+    INDEX idx_contract_type (contract_type),
+    INDEX idx_status (status),
+    INDEX idx_deployment_timestamp (deployment_timestamp)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='区块链合约元数据表';
+
+-- 智能合约事件表
+CREATE TABLE blockchain_contract_event (
+    id VARCHAR(36) PRIMARY KEY,
+    contract_address VARCHAR(42) NOT NULL COMMENT '合约地址',
+    event_name VARCHAR(100) NOT NULL COMMENT '事件名称',
+    event_signature VARCHAR(100) COMMENT '事件签名',
+    block_number BIGINT NOT NULL COMMENT '区块号',
+    block_hash VARCHAR(66) COMMENT '区块哈希',
+    transaction_hash VARCHAR(66) NOT NULL COMMENT '交易哈希',
+    transaction_index INT COMMENT '交易索引',
+    log_index INT COMMENT '日志索引',
+    event_data TEXT COMMENT '事件数据（JSON格式）',
+    topics TEXT COMMENT '事件主题（JSON数组）',
+    decoded_params TEXT COMMENT '解码后的参数（JSON格式）',
+    event_timestamp TIMESTAMP COMMENT '事件时间戳',
+    processed BOOLEAN DEFAULT FALSE COMMENT '是否已处理',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_contract_address (contract_address),
+    INDEX idx_event_name (event_name),
+    INDEX idx_transaction_hash (transaction_hash),
+    INDEX idx_block_number (block_number),
+    INDEX idx_event_timestamp (event_timestamp),
+    INDEX idx_contract_event (contract_address, event_name, block_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='区块链合约事件表';

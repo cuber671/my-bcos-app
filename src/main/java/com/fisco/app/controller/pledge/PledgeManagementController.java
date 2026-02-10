@@ -1,5 +1,6 @@
 package com.fisco.app.controller.pledge;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -7,9 +8,11 @@ import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fisco.app.exception.BusinessException;
 
 import com.fisco.app.dto.pledge.PledgeApplicationQueryRequest;
 import com.fisco.app.dto.pledge.PledgeConfirmRequest;
@@ -60,12 +65,27 @@ public class PledgeManagementController {
     })
     public ResponseEntity<PledgeInitiateResponse> initiatePledge(
             @ApiParam(value = "质押发起信息", required = true) @Valid @RequestBody PledgeInitiateRequest request,
+            BindingResult bindingResult,
             @ApiParam(value = "当前用户认证信息") Authentication authentication) {
 
         log.info("收到质押发起, 仓单ID: {}, 金融机构ID: {}, 质押金额: {}",
                 request.getReceiptId(), request.getFinancialInstitutionId(), request.getPledgeAmount());
 
-        // 从认证信息获取货主ID和名称
+        // 1. 基础验证失败会自动由@Valid处理
+        if (bindingResult.hasErrors()) {
+            log.warn("质押发起请求参数验证失败: {}", bindingResult.getAllErrors());
+            return ResponseEntity.badRequest().build();
+        }
+
+        // 2. 业务规则验证
+        try {
+            validatePledgeBusinessRules(request);
+        } catch (BusinessException e) {
+            log.warn("质押业务规则验证失败: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        // 3. 从认证信息获取货主ID和名称
         String ownerId = authentication.getName();
         String ownerName = authentication.getPrincipal() != null ?
                 authentication.getPrincipal().toString() : "货主";
@@ -213,6 +233,29 @@ public class PledgeManagementController {
         status.put("message", "请使用质押记录查询接口获取详细状态");
 
         return ResponseEntity.ok(status);
+    }
+
+    /**
+     * 验证质押业务规则
+     *
+     * @param request 质押发起请求
+     * @throws BusinessException 如果业务规则验证失败
+     */
+    private void validatePledgeBusinessRules(PledgeInitiateRequest request) {
+        // 验证日期逻辑
+        if (request.getPledgeStartDate().isAfter(request.getPledgeEndDate())) {
+            throw new BusinessException("质押开始日期不能晚于质押结束日期");
+        }
+
+        // 验证质押期限（30-365天）
+        long daysBetween = ChronoUnit.DAYS.between(request.getPledgeStartDate(), request.getPledgeEndDate());
+        if (daysBetween < 30 || daysBetween > 365) {
+            throw new BusinessException("质押期限必须在30-365天之间");
+        }
+
+        // 验证质押金额与质押率的合理性（已经在DTO层验证了金额和质押率的基本范围）
+        // 这里可以添加更复杂的业务逻辑验证
+        log.debug("质押业务规则验证通过: 期限={}天", daysBetween);
     }
 
     // ==================== 兼容性接口（已废弃）====================

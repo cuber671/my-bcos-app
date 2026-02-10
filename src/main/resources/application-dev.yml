@@ -1,0 +1,90 @@
+# Development Environment Configuration
+# 开发环境配置
+#
+# This configuration is used for local development only.
+# To activate: java -jar my-bcos-app.jar --spring.profiles.active=dev
+
+spring:
+  profiles:
+    active: dev
+
+  # Database Configuration for Development
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/bcos_supply_chain?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:fisco_admin}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # JPA Configuration for Development
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+  # Jackson Configuration
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# Logging Configuration for Development
+logging:
+  level:
+    root: INFO
+    com.fisco.app: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# JWT Configuration for Development
+jwt:
+  # Development default JWT secret (CHANGE IN PRODUCTION!)
+  secret: ${JWT_SECRET:aVeryLongSecretKeyForJWTTokenGenerationThatIsAtLeast256BitsLongForHS512AlgorithmSecurityPleaseChangeInProduction}
+  expiration: 86400000
+
+# Server Configuration
+server:
+  port: 8080
+
+# FISCO BCOS Configuration
+fisco:
+  config-file: config.toml
+  group: group0
+
+# Node Management Configuration
+blockchain:
+  node:
+    ip:
+      mask:
+        enabled: false  # Disable IP masking in development
+    status:
+      cache:
+        ttl: 30
+    sync:
+      threshold: 10
+    group:
+      cache:
+        ttl: 60
+
+# Admin Configuration
+app:
+  admin:
+    enabled: true
+    freeze-only: true
+
+# Smart Contract Addresses (will be set after deployment)
+contracts:
+  bill:
+    address: ${CONTRACTS_BILL_ADDRESS:}
+  receivable:
+    address: ${CONTRACTS_RECEIVABLE_ADDRESS:}
+  warehouse-receipt:
+    address: ${CONTRACTS_WAREHOUSE_RECEIPT_ADDRESS:}
+  enterprise:
+    address: ${CONTRACTS_ENTERPRISE_ADDRESS:}
+  receivable-with-overdue:
+    address: ${CONTRACTS_RECEIVABLE_WITH_OVERDUE_ADDRESS:}

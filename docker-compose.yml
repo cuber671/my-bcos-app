@@ -1,0 +1,74 @@
+# 指定Compose文件版本（兼容Docker 19.03+，主流稳定版本）
+version: '3.8'
+
+# 定义所有服务（容器）
+services:
+  # -------------------------- 1. MySQL数据库服务 --------------------------
+  db:
+    # 使用MySQL 8.0官方镜像（本地无则自动下载）
+    image: mysql:8.0
+    # 自定义容器名，方便管理
+    container_name: fisco-db
+    # 重启策略：容器崩溃/宿主机重启时自动重启（开发测试推荐）
+    restart: always
+    # MySQL环境变量配置
+    environment:
+      # root用户密码（仅用于手动登录创建自定义用户，Java应用不使用）
+      MYSQL_ROOT_PASSWORD: root
+      # 自动创建业务数据库（无需手动建库）
+      MYSQL_DATABASE: fisco_data
+      # 设置MySQL字符集，避免中文乱码
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    # 端口映射：宿主机3306 → 容器3306（外部可通过localhost:3306访问）
+    ports:
+      - "3306:3306"
+    # 数据卷挂载：持久化MySQL数据（删除容器数据不丢失）
+    volumes:
+      - db_data:/var/lib/mysql
+      # 可选：挂载初始化SQL脚本（首次启动自动执行，比如建表/插基础数据）
+      # - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    # 网络配置（和Java应用在同一网络，通过服务名通信）
+    networks:
+      - fisco-network
+
+  # -------------------------- 2. Java应用服务 --------------------------
+  app:
+    # 基于当前目录的Dockerfile构建Java镜像（需确保当前目录有Dockerfile）
+    build: .
+    # 自定义Java容器名
+    container_name: fisco-java-service
+    # 端口映射：宿主机8080 → 容器8080（外部访问Java接口）
+    ports:
+      - "8080:8080"
+    # 依赖：先启动db服务再启动app（仅保证启动顺序，不保证MySQL服务就绪）
+    depends_on:
+      - db
+    # Java应用环境变量（配置数据库连接）
+    environment:
+      # 数据库连接地址：db是MySQL服务名（Docker内部DNS自动解析），不用写IP
+      - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/fisco_data?useSSL=false&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+      # 替换为你手动创建的自定义用户名（比如fisco_user）
+      - SPRING_DATASOURCE_USERNAME=fisco_user
+      # 替换为你手动创建的自定义密码（比如fisco123456）
+      - SPRING_DATASOURCE_PASSWORD=fisco123456
+      # 可选：设置Java日志级别
+      - LOG_LEVEL=INFO
+    # 挂载目录：宿主机certs → 容器/app/certs（证书文件实时同步）
+    volumes:
+      - ./certs:/app/certs
+    # 加入和MySQL同一网络
+    networks:
+      - fisco-network
+    # 重启策略：Java应用崩溃时自动重启
+    restart: on-failure
+
+# -------------------------- 全局配置 --------------------------
+# 定义命名数据卷（MySQL数据持久化）
+volumes:
+  db_data:
+
+# 定义自定义网络（所有服务在同一网络，保证通信隔离）
+networks:
+  fisco-network:
+    driver: bridge

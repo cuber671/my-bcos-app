@@ -101,7 +101,15 @@
       "Bash(javap:*)",
       "Bash(awk:*)",
       "Bash(claude mcp add:*)",
-      "Bash(claude mcp list:*)"
+      "Bash(claude mcp list:*)",
+      "Skill(glm-plan-usage:usage-query-skill)",
+      "mcp__filesystem__directory_tree",
+      "mcp__web-reader__webReader",
+      "mcp__web-search-prime__webSearchPrime",
+      "mcp__zread__read_file",
+      "mcp__filesystem__write_file",
+      "mcp__filesystem__list_directory_with_sizes",
+      "mcp__filesystem__get_file_info"
     ]
   }
 }

@@ -1,7 +1,9 @@
 [cryptoMaterial]
 
 certPath = "conf"                           # The certification path
-disableSsl = "true"                         # Communication with nodes without SSL
+# SECURITY: SSL should be enabled in production for secure node communication
+# For development without certificates, you may temporarily set disableSsl = "true"
+disableSsl = "false"                        # Communication with nodes without SSL (SET TO "false" IN PRODUCTION)
 useSMCrypto = "false"                       # RPC SM crypto type
 
 # The following configurations take the certPath by default if commented
