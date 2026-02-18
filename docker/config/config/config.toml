@@ -1,0 +1,18 @@
+[cryptoMaterial]
+certPath = "/app/sdk"
+disableSsl = "false"
+useSMCrypto = "false"
+
+[network]
+messageTimeout = "10000"
+defaultGroup = "group0"
+peers=["172.20.0.10:20000", "172.20.0.11:20000", "172.20.0.12:20000", "172.20.0.13:20000"]
+
+[account]
+keyStoreDir = "account"
+accountFileFormat = "pem"
+
+[threadPool]
+channelProcessorThreadSize = "16"
+receiptProcessorThreadSize = "16"
+maxBlockingQueueSize = "102400"

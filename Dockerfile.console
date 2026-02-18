@@ -1,0 +1,8 @@
+FROM eclipse-temurin:11-jre
+RUN apt-get update && apt-get install -y bash && rm -rf /var/lib/apt/lists/*
+WORKDIR /data
+# 将解压后的控制台目录内容放入镜像
+COPY ./console /data
+RUN chmod +x start.sh
+# 保持运行状态
+ENTRYPOINT ["tail", "-f", "/dev/null"]

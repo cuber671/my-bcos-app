@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:db}:${DB_PORT:3306}/${DB_NAME:fisco_data}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:fisco_user}
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+fisco:
+  enabled: ${FISCO_ENABLED:false}
+  node-url: ${FISCO_NODE_URL:http://node0:20000}
+  group: ${FISCO_GROUP:group0}
+
+contracts:
+  # --- 1. 仓单模块 (Warehouse V2) ---
+  warehouse-v2: ${CONTRACT_WAREHOUSE_V2_ADDR}
+  warehouse-history: ${CONTRACT_WAREHOUSE_HISTORY_V2_ADDR}
+  warehouse-cancel: ${CONTRACT_WAREHOUSE_CANCEL_V2_ADDR}
+  
+  # --- 2. 票据模块 (Bill V2) ---
+  bill-v2: ${CONTRACT_BILL_V2_ADDR}
+  bill-pool: ${CONTRACT_BILL_POOL_V2_ADDR}
+  bill-split: ${CONTRACT_BILL_SPLIT_V2_ADDR}
+  bill-merge: ${CONTRACT_BILL_MERGE_V2_ADDR}
+  
+  # --- 3. 供应链金融基础模块 ---
+  receivable: ${CONTRACT_RECEIVABLE_V2_ADDR}
+  credit-limit: ${CONTRACT_CREDIT_LIMIT_V2_ADDR}
+  enterprise: ${CONTRACT_ENTERPRISE_REGISTRY_V2_ADDR}
+  
+  # --- 4. 兼容性占位 (如果旧代码仍在调用) ---
+  bill-legacy: ${CONTRACTS_BILL_ADDRESS:}
+  enterprise-v2-legacy: ${CONTRACTS_ENTERPRISE_V2_ADDRESS:0x000000000000000000000000000}
+  receivable-with-overdue: ${CONTRACTS_RECEIVABLE_WITH_OVERDUE_ADDRESS:}
+
+server:
+  port: ${SERVER_PORT:8080}

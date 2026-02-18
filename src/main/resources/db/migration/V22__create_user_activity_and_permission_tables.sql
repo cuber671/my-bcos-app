@@ -1,0 +1,51 @@
+-- 创建用户活动日志表
+CREATE TABLE IF NOT EXISTS user_activity (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    user_id VARCHAR(36) NOT NULL COMMENT '用户ID',
+    username VARCHAR(50) COMMENT '用户名',
+    real_name VARCHAR(100) COMMENT '真实姓名',
+    activity_type VARCHAR(30) NOT NULL COMMENT '活动类型',
+    description VARCHAR(500) NOT NULL COMMENT '活动描述',
+    module VARCHAR(50) COMMENT '操作模块',
+    result VARCHAR(20) COMMENT '操作结果',
+    request_method VARCHAR(10) COMMENT '请求方法',
+    request_url VARCHAR(500) COMMENT '请求URL',
+    ip_address VARCHAR(50) COMMENT '请求IP地址',
+    user_agent VARCHAR(500) COMMENT '用户代理',
+    browser VARCHAR(50) COMMENT '浏览器类型',
+    os VARCHAR(50) COMMENT '操作系统',
+    device VARCHAR(50) COMMENT '设备类型',
+    location VARCHAR(200) COMMENT '位置信息',
+    failure_reason TEXT COMMENT '失败原因',
+    duration BIGINT COMMENT '操作时长（毫秒）',
+    extra_data TEXT COMMENT '额外数据（JSON格式）',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_user_id (user_id),
+    INDEX idx_activity_type (activity_type),
+    INDEX idx_created_at (created_at),
+    INDEX idx_ip_address (ip_address)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户活动日志表';
+
+-- 创建用户权限表
+CREATE TABLE IF NOT EXISTS user_permission (
+    id VARCHAR(36) NOT NULL PRIMARY KEY COMMENT '权限ID（UUID格式）',
+    user_id VARCHAR(36) NOT NULL COMMENT '用户ID',
+    permission_code VARCHAR(100) NOT NULL COMMENT '权限代码',
+    permission_name VARCHAR(100) NOT NULL COMMENT '权限名称',
+    resource_type VARCHAR(50) NOT NULL COMMENT '资源类型',
+    operation VARCHAR(20) NOT NULL COMMENT '操作类型',
+    scope VARCHAR(20) COMMENT '权限范围',
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用',
+    is_expired BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否过期',
+    expire_at DATETIME COMMENT '过期时间',
+    remarks VARCHAR(500) COMMENT '备注',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    created_by VARCHAR(50) COMMENT '创建者',
+    updated_by VARCHAR(50) COMMENT '更新者',
+    INDEX idx_user_id (user_id),
+    INDEX idx_permission_code (permission_code),
+    INDEX idx_resource_type (resource_type),
+    INDEX idx_created_at (created_at),
+    UNIQUE KEY uk_user_permission (user_id, permission_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户权限表';

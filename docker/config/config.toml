@@ -1,0 +1,21 @@
+[common]
+    cryptoType = 0 # 0为标准ECDSA，1为国密SM
+
+[network]
+    # 使用标准数组格式，端口与节点配置一致（20000）
+    peers = [
+        "fisco-node0:20000",
+        "fisco-node1:20000",
+        "fisco-node2:20000",
+        "fisco-node3:20000"
+    ]
+
+[cryptoMaterial]
+    # 保持不变，确保 volume 挂载路径正确
+    certPath = "/app/sdk"
+    caCert = "/app/sdk/ca.crt"
+    sslCert = "/app/sdk/sdk.crt"
+    sslKey = "/app/sdk/sdk.key"
+
+[threadPool]
+    maxBlockingQueueSize = 1000

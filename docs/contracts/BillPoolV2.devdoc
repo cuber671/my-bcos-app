@@ -1,0 +1,1 @@
+{"kind":"dev","methods":{"investBill(string,address,uint256)":{"details":"票据投资（核心逻辑：对应 Java 的 investBill） 本质是带有贴现金额记录的权利转移"},"splitBill(string,string[],string[],uint256[])":{"details":"票据拆分（核心逻辑：对应 Java 的 splitBill） 逻辑：作废原票，生成新票"}},"version":1}

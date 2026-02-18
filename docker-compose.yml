@@ -1,0 +1,127 @@
+# Docker Compose 配置文件 - FISCO BCOS + Java 后端
+# 适配新的目录结构：docker/config、docker/logs、docker/data
+
+services:
+  # 1. MySQL 数据库
+  # fisco-dev-db:
+  #   image: mysql:8.0.36
+  #   container_name: fisco-dev-db
+  #   environment:
+  #     - MYSQL_DATABASE=fisco_data
+  #     - MYSQL_USER=fisco_user
+  #     - MYSQL_PASSWORD=123456
+  #     - MYSQL_ROOT_PASSWORD=root_pwd
+  #   ports:
+  #     - "3306:3306"
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+  #   networks:
+  #     - fisco-net
+
+  # # 2. Java 应用程序
+  # app:
+  #   build: .
+  #   container_name: fisco-dev-app
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - DB_HOST=fisco-dev-db
+  #     - DB_PORT=3306
+  #     - DB_NAME=fisco_data
+  #     - DB_USERNAME=fisco_user
+  #     - DB_PASSWORD=123456
+  #     - FISCO_ENABLED=true
+  #     - FISCO_CONFIG_FILE=/app/config/config.toml
+  #     - FISCO_GROUP=group0
+  #     - JWT_SECRET=YourSuperLongSecretKey1234567890abcdefg
+  #     - SERVER_PORT=8080
+  #   volumes:
+  #     - ./docker/config:/app/config:ro
+  #     - ./docker/logs:/app/logs
+  #     - ./docker/data:/app/data
+  #     - ./fisco/nodes/127.0.0.1/sdk:/app/sdk:ro
+  #   depends_on:
+  #     fisco-dev-db:
+  #       condition: service_healthy
+  #     fisco-node0:
+  #       condition: service_started
+  #     fisco-node1:
+  #       condition: service_started
+  #   networks:
+  #     - fisco-net
+
+  # 3. FISCO BCOS 节点群
+  fisco-node0:
+    image: fiscoorg/fiscobcos:v3.12.1
+    container_name: fisco-node0
+    restart: always
+    ports:
+      - "20000:20000"
+      - "30000:30000"
+    volumes:
+      # 挂载节点整个根目录，容器内 /data/nodes.json 就能对应宿主机的 nodes.json
+      - ./fisco/nodes/127.0.0.1/node0:/data
+      # 显式挂载 conf 目录，确保 /data/conf/ssl.key 可读
+      - ./fisco/nodes/127.0.0.1/node0/conf:/data/conf
+      # 挂载修改后的 config.ini 所在目录
+      - ./docker/config:/config:ro
+    working_dir: /data
+    command: ["/usr/local/bin/fisco-bcos", "-c", "/config/config.ini", "-g", "config.genesis"]
+    networks:
+      - fisco-net
+
+  fisco-node1:
+    image: fiscoorg/fiscobcos:v3.12.1
+    container_name: fisco-node1
+    restart: always
+    volumes:
+      - ./fisco/nodes/127.0.0.1/node1:/data
+      - ./fisco/nodes/127.0.0.1/node1/conf:/data/conf
+      - ./docker/config:/config:ro
+    working_dir: /data
+    command: ["/usr/local/bin/fisco-bcos", "-c", "/config/config.ini", "-g", "config.genesis"]
+    networks:
+      - fisco-net
+
+  fisco-node2:
+    image: fiscoorg/fiscobcos:v3.12.1
+    container_name: fisco-node2
+    restart: always
+    volumes:
+      - ./fisco/nodes/127.0.0.1/node2:/data
+      - ./fisco/nodes/127.0.0.1/node2/conf:/data/conf
+      - ./docker/config:/config:ro
+    working_dir: /data
+    command: ["/usr/local/bin/fisco-bcos", "-c", "/config/config.ini", "-g", "config.genesis"]
+    networks:
+      - fisco-net
+
+  fisco-node3:
+    image: fiscoorg/fiscobcos:v3.12.1
+    container_name: fisco-node3
+    restart: always
+    volumes:
+      - ./fisco/nodes/127.0.0.1/node3:/data
+      - ./fisco/nodes/127.0.0.1/node3/conf:/data/conf
+      - ./docker/config:/config:ro
+    working_dir: /data
+    command: ["/usr/local/bin/fisco-bcos", "-c", "/config/config.ini", "-g", "config.genesis"]
+    networks:
+      - fisco-net
+
+  fisco-console:
+    image: eclipse-temurin:11-jre-focal
+    container_name: fisco-console
+    volumes:
+      - ./:/app
+    working_dir: /app
+    entrypoint: ["bash", "-c", "sleep infinity"]
+    networks:
+      - fisco-net
+
+networks:
+  fisco-net:
+    driver: bridge

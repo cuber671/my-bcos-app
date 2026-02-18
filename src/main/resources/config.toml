@@ -1,0 +1,21 @@
+[cryptoMaterial]
+# 建议先用相对路径，对应 src/main/resources/conf
+certPath = "conf" 
+
+[network]
+# 只要连上 node0，SDK 就能自动感知整个集群
+peers=["127.0.0.1:20200"] 
+
+[account]
+# 存储生成的账户文件目录
+keyStoreDir = "account"
+accountFileFormat = "pem"
+
+[threadPool]
+channelProcessorThreadSize = "16"
+receiptProcessorThreadSize = "16"
+maxBlockingQueueSize = "102400"
+
+[compatibility]
+# 对应你 pom.xml 里的版本或节点版本
+supportedVersion = "3.8.0"

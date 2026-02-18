@@ -1,0 +1,1 @@
+{"kind":"dev","methods":{"executeMerge(bytes32[],bytes32,uint256,uint8)":{"details":"执行合并上链","params":{"_amount":"合并后的总金额","_newHash":"生成的新票据哈希","_pHashes":"待合并的父票据哈希数组","_type":"资产类型 (0-Bill, 1-Receipt)"}}},"title":"票据合并管理合约 V2 (哈希优化版)","version":1}

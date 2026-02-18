@@ -1,0 +1,176 @@
+# Production Environment Configuration
+# 生产环境配置
+#
+# SECURITY NOTES:
+# 1. All sensitive data must be set via environment variables
+# 2. Never commit actual secrets to version control
+# 3. Use strong, unique passwords and keys
+# 4. Enable SSL for all connections
+# 5. Use appropriate log levels (INFO or WARN)
+#
+# To activate: java -jar my-bcos-app.jar --spring.profiles.active=prod
+#
+# Required environment variables:
+# - DB_USERNAME: Database username
+# - DB_PASSWORD: Database password
+# - JWT_SECRET: JWT signing secret (at least 256 bits)
+# - CONTRACTS_*_ADDRESS: Smart contract addresses
+
+spring:
+  profiles:
+    group:
+      prod: "prod"
+
+  # Database Configuration for Production
+  datasource:
+    # SECURITY: SSL enabled for production
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:bcos_supply_chain}?useSSL=true&requireSSL=true&serverTimezone=UTC
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+    # Connection Pool Configuration (optimized for production)
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      initial-size: 10
+      min-idle: 10
+      max-active: 100
+      max-wait: 60000
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      validation-query: SELECT 1
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      # Remove abandoned connections to prevent leaks
+      remove-abandoned: true
+      remove-abandoned-timeout: 1800
+
+  # JPA Configuration for Production
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    show-sql: false  # Disable SQL logging in production
+    hibernate:
+      ddl-auto: validate  # Validate schema, don't auto-update
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+
+  # Jackson Configuration
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# Logging Configuration for Production
+logging:
+  level:
+    root: INFO
+    com.fisco.app: INFO
+    # Security: Don't log SQL in production
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.springframework.web: INFO
+  file:
+    name: /var/log/my-bcos-app/application.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%.40class{40}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId},%X{spanId}] [%.40class{40}] - %msg%n"
+
+# JWT Configuration for Production
+jwt:
+  # SECURITY: JWT secret must be set via environment variable
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  # Production-specific server settings
+  tomcat:
+    max-threads: 200
+    accept-count: 100
+    connection-timeout: 20000
+  # Enable compression for better performance
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+
+# FISCO BCOS Configuration
+fisco:
+  config-file: ${FISCO_CONFIG_FILE:config-prod.toml}
+  group: ${FISCO_GROUP:group0}
+
+# Blockchain Transaction Configuration
+blockchain:
+  transaction:
+    timeout: ${BLOCKCHAIN_TX_TIMEOUT:30000}
+    retry:
+      enabled: true
+      max-attempts: ${BLOCKCHAIN_RETRY_MAX:3}
+    gas-price:
+      default: ${BLOCKCHAIN_GAS_PRICE:1000000000}
+    gas-limit:
+      max: ${BLOCKCHAIN_GAS_LIMIT:30000000}
+    pool:
+      cleanup:
+        enabled: true
+        interval-hours: ${BLOCKCHAIN_POOL_CLEANUP_INTERVAL:2}
+
+# Node Management Configuration
+blockchain:
+  node:
+    ip:
+      mask:
+        enabled: true  # Enable IP masking in production
+    status:
+      cache:
+        ttl: ${NODE_CACHE_TTL:30}
+    sync:
+      threshold: ${NODE_SYNC_THRESHOLD:10}
+    group:
+      cache:
+        ttl: ${GROUP_CACHE_TTL:60}
+
+# Admin Configuration
+app:
+  admin:
+    enabled: true
+    freeze-only: true
+
+# Smart Contract Addresses (must be set via environment variables)
+contracts:
+  bill:
+    address: ${CONTRACTS_BILL_ADDRESS:}
+  receivable:
+    address: ${CONTRACTS_RECEIVABLE_ADDRESS:}
+  warehouse-receipt:
+    address: ${CONTRACTS_WAREHOUSE_RECEIPT_ADDRESS:}
+  enterprise:
+    address: ${CONTRACTS_ENTERPRISE_ADDRESS:}
+  receivable-with-overdue:
+    address: ${CONTRACTS_RECEIVABLE_WITH_OVERDUE_ADDRESS:}
+
+# File Upload Configuration
+spring:
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+
+# Health Check and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: ${PROMETHEUS_ENABLED:false}
