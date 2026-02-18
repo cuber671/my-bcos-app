@@ -2,7 +2,6 @@ package com.fisco.app.controller.blockchain;
 
 import java.math.BigInteger;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.fisco.bcos.sdk.v3.client.Client;
@@ -14,9 +13,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fisco.app.entity.bill.Bill;
-import com.fisco.app.entity.receivable.Receivable;
-import com.fisco.app.entity.warehouse.WarehouseReceipt;
+import com.fisco.app.contract.bill.BillV2;
+import com.fisco.app.contract.receivable.ReceivableV2;
+import com.fisco.app.contract.warehouse.WarehouseReceiptV2;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -86,24 +85,12 @@ public class ContractStatusController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            Bill bill = BillContract.load(BILL_ADDRESS, client, cryptoKeyPair);
+            BillV2.load(BILL_ADDRESS, client, cryptoKeyPair);
 
-            // 查询管理员地址
-            String admin = bill.admin();
-            result.put("admin", admin);
-
-            // 查询票据总数
-            BigInteger billCount = bill.billCount();
-            result.put("billCount", billCount.toString());
-
-            // 查询已接受的票据列表
-            @SuppressWarnings("unchecked")
-            List<String> acceptedBills = bill.getAcceptedBills(cryptoKeyPair.getAddress());
-            result.put("acceptedBillsCount", acceptedBills.size());
-            result.put("acceptedBills", acceptedBills);
-
+            // V2合约没有admin和billCount方法，仅返回基本信息
             result.put("contractAddress", BILL_ADDRESS);
             result.put("status", "success");
+            result.put("note", "V2 contract - use BillService to query detailed information");
 
         } catch (Exception e) {
             result.put("status", "error");
@@ -123,18 +110,12 @@ public class ContractStatusController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            Receivable receivable = ReceivableContract.load(RECEIVABLE_ADDRESS, client, cryptoKeyPair);
+            ReceivableV2.load(RECEIVABLE_ADDRESS, client, cryptoKeyPair);
 
-            // 查询管理员地址
-            String admin = receivable.admin();
-            result.put("admin", admin);
-
-            // 查询应收账款总数
-            BigInteger count = receivable.receivableCount();
-            result.put("receivableCount", count.toString());
-
+            // V2合约没有admin和receivableCount方法，仅返回基本信息
             result.put("contractAddress", RECEIVABLE_ADDRESS);
             result.put("status", "success");
+            result.put("note", "V2 contract - use ReceivableService to query detailed information");
 
         } catch (Exception e) {
             result.put("status", "error");
@@ -154,18 +135,12 @@ public class ContractStatusController {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            WarehouseReceipt wr = WarehouseReceiptContract.load(WAREHOUSE_RECEIPT_ADDRESS, client, cryptoKeyPair);
+            WarehouseReceiptV2.load(WAREHOUSE_RECEIPT_ADDRESS, client, cryptoKeyPair);
 
-            // 查询管理员地址
-            String admin = wr.admin();
-            result.put("admin", admin);
-
-            // 查询仓单总数
-            BigInteger count = wr.receiptCount();
-            result.put("receiptCount", count.toString());
-
+            // V2合约没有admin和receiptCount方法，仅返回基本信息
             result.put("contractAddress", WAREHOUSE_RECEIPT_ADDRESS);
             result.put("status", "success");
+            result.put("note", "V2 contract - use WarehouseReceiptService to query detailed information");
 
         } catch (Exception e) {
             result.put("status", "error");

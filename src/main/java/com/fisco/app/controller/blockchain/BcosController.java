@@ -5,21 +5,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.fisco.app.dto.blockchain.*;
-import com.fisco.app.service.blockchain.BlockService;
-import com.fisco.app.vo.Result;
 import org.fisco.bcos.sdk.v3.client.Client;
 import org.fisco.bcos.sdk.v3.crypto.keypair.CryptoKeyPair;
-import org.fisco.bcos.sdk.v3.model.TransactionReceipt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.fisco.app.dto.blockchain.BlockDTO;
+import com.fisco.app.dto.blockchain.BlockStatisticsDTO;
+import com.fisco.app.dto.blockchain.BlockValidationResponse;
+import com.fisco.app.dto.blockchain.TransactionDTO;
+import com.fisco.app.service.blockchain.BlockService;
+import com.fisco.app.vo.Result;
 
 // import com.fisco.app.contract.HelloWorld; // HelloWorld contract not available in V2
 
@@ -252,102 +253,6 @@ public class BcosController {
             logger.error("Get blockchain statistics failed", e);
             return Result.error("获取区块链统计信息失败: " + e.getMessage());
         }
-    }
-
-    /**
-     * 部署 HelloWorld 合约
-     * POST /api/blockchain/contract/deploy
-     * NOTE: HelloWorld contract not available in V2, temporarily disabled
-     */
-    /*@PostMapping("/contract/deploy")*/
-    @ApiOperation(value = "部署HelloWorld合约", notes = "部署一个HelloWorld测试合约到区块链")
-    public Map<String, Object> deployHelloWorld() {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            logger.info("Deploying HelloWorld contract...");
-            HelloWorld helloWorld = HelloWorld.deploy(client, cryptoKeyPair);
-
-            String contractAddress = helloWorld.getContractAddress();
-            result.put("status", "success");
-            result.put("contractAddress", contractAddress);
-            result.put("message", "合约部署成功");
-
-            logger.info("Contract deployed successfully: address={}", contractAddress);
-        } catch (Exception e) {
-            result.put("status", "error");
-            result.put("message", "合约部署失败: " + e.getMessage());
-            logger.error("Deploy contract failed", e);
-        }
-        return result;
-    }
-
-    /**
-     * 调用 HelloWorld 合约的 get 方法（读取数据）
-     * GET /api/blockchain/contract/{address}/get
-     */
-    //@GetMapping("/contract/{address}/get")
-    @ApiOperation(value = "读取合约数据", notes = "调用HelloWorld合约的get方法读取数据")
-    public Map<String, Object> callHelloWorldGet(
-            @ApiParam(value = "合约地址", required = true, example = "0x1234567890abcdef1234567890abcdef12345678")
-            @PathVariable String address) {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            HelloWorld helloWorld = HelloWorld.load(address, client, cryptoKeyPair);
-            String value = helloWorld.get();
-
-            result.put("status", "success");
-            result.put("value", value);
-            result.put("contractAddress", address);
-            result.put("message", "读取成功");
-
-            logger.info("Called contract get: address={}, value={}", address, value);
-        } catch (Exception e) {
-            result.put("status", "error");
-            result.put("message", "调用合约失败: " + e.getMessage());
-            logger.error("Call contract get failed", e);
-        }
-        return result;
-    }
-
-    /**
-     * 调用 HelloWorld 合约的 set 方法（写入数据）
-     * POST /api/blockchain/contract/{address}/set
-     * Body: {"value": "新值"}
-     */
-    //@PostMapping("/contract/{address}/set")
-    @ApiOperation(value = "写入合约数据", notes = "调用HelloWorld合约的set方法写入数据")
-    public Map<String, Object> callHelloWorldSet(
-            @ApiParam(value = "合约地址", required = true, example = "0x1234567890abcdef1234567890abcdef12345678")
-            @PathVariable String address,
-            @RequestBody Map<String, String> request) {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            String value = request.get("value");
-            if (value == null || value.isEmpty()) {
-                result.put("status", "error");
-                result.put("message", "value 参数不能为空");
-                return result;
-            }
-
-            HelloWorld helloWorld = HelloWorld.load(address, client, cryptoKeyPair);
-            TransactionReceipt receipt = helloWorld.set(value);
-
-            result.put("status", "success");
-            result.put("contractAddress", address);
-            result.put("newValue", value);
-            result.put("message", "设置成功");
-            result.put("transactionHash", receipt.getTransactionHash());
-            result.put("blockNumber", receipt.getBlockNumber());
-            result.put("receiptStatus", receipt.getStatus());
-
-            logger.info("Called contract set: address={}, value={}, txHash={}",
-                address, value, receipt.getTransactionHash());
-        } catch (Exception e) {
-            result.put("status", "error");
-            result.put("message", "调用合约失败: " + e.getMessage());
-            logger.error("Call contract set failed", e);
-        }
-        return result;
     }
 
     /**

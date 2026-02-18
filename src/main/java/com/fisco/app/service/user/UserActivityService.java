@@ -1,14 +1,10 @@
 package com.fisco.app.service.user;
 
-import com.fisco.app.dto.user.UserActivityDTO;
-import com.fisco.app.dto.user.UserActivityQueryRequest;
-import com.fisco.app.entity.user.User;
-import com.fisco.app.entity.user.UserActivity;
-import com.fisco.app.repository.user.UserActivityRepository;
-import com.fisco.app.repository.user.UserRepository;
-import io.swagger.annotations.Api;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -18,10 +14,16 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import com.fisco.app.dto.user.UserActivityDTO;
+import com.fisco.app.dto.user.UserActivityQueryRequest;
+import com.fisco.app.entity.user.User;
+import com.fisco.app.entity.user.UserActivity;
+import com.fisco.app.repository.user.UserActivityRepository;
+import com.fisco.app.repository.user.UserRepository;
+
+import io.swagger.annotations.Api;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 用户活动日志Service
@@ -169,7 +171,6 @@ public class UserActivityService {
     /**
      * 获取用户的活动日志
      */
-    @SuppressWarnings("null")
     public List<UserActivityDTO> getUserActivities(@NonNull String userId) {
         log.info("获取用户活动日志: userId={}", userId);
 

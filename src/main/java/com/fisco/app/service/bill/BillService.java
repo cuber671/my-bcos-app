@@ -290,7 +290,6 @@ public class BillService {
 
         // 步骤2: 调用区块链合约
         try {
-            String endorsementTypeStr = request.getEndorsementType().name();
             String txHash = contractService.endorseBillOnChain(billId, request.getEndorseeAddress());
 
             // 步骤3: 创建背书记录
@@ -1561,22 +1560,15 @@ public class BillService {
             .filter(b -> b.getBillStatus() == Bill.BillStatus.FROZEN)
             .count();
 
-            long expiredCount = bills.stream()
-            .filter(b -> b.getBillStatus() != Bill.BillStatus.PAID && 
-                         b.getBillStatus() != Bill.BillStatus.SETTLED && 
-                         b.getDueDate() != null && b.getDueDate().isBefore(now))
+            long cancelledCount = bills.stream()
+            .filter(b -> b.getBillStatus() == Bill.BillStatus.CANCELLED)
             .count();
 
-            long dishonoredCount = bills.stream()
-            .filter(b -> Boolean.TRUE.equals(b.getDishonored()))
-            .count();
-
-        long totalRiskCount = frozenCount + expiredCount + dishonoredCount;
+        long totalRiskCount = frozenCount + cancelledCount;
 
         BillStatisticsDTO.RiskStatistics risk = new BillStatisticsDTO.RiskStatistics();
         risk.setFrozenCount(frozenCount);
-        risk.setCancelledCount(expiredCount);
-        risk.setDishonoredCount(dishonoredCount);
+        risk.setCancelledCount(cancelledCount);
         risk.setTotalRiskCount(totalRiskCount);
         risk.setRiskRate(bills.size() > 0 ? (totalRiskCount * 100.0 / bills.size()) : 0);
 
