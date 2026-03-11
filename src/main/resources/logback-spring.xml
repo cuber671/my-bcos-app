@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!-- 定义日志文件存储路径 -->
-    <property name="LOG_HOME" value="/app/logs"/>
+    <!-- Docker环境使用/app/logs，开发环境使用当前目录的logs文件夹 -->
+    <property name="LOG_HOME" value="${LOG_PATH:-${LOG_HOME:-./logs}}"/>
     <property name="APP_NAME" value="my-bcos-app"/>
 
+    <!-- 自动创建日志目录 -->
+    <property name="LOG_DIR" value="${LOG_HOME}"/>
+    <statusListener class="ch.qos.logback.core.status.OnConsoleStatusListener"/>
+
     <!-- 定义日志格式 -->
+    <!-- 包含：timestamp, thread, traceId, userId, txHash, level, logger, message -->
     <property name="CONSOLE_LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId:%X{traceId}] [userId:%X{userId}] [txHash:%X{txHash}] %-5level %logger{36} - %msg%n"/>
     <property name="FILE_LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId:%X{traceId}] [userId:%X{userId}] [txHash:%X{txHash}] %-5level %logger{50} - %msg%n"/>
 
     <!-- 控制台输出 -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">

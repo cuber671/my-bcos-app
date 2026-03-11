@@ -1,46 +1,172 @@
+# src/main/resources/application.yml
+server:
+  port: ${SERVER_PORT:8080} # 引用.env的SERVER_PORT，默认8080
+  # SSL/TLS 配置（强制HTTPS）
+  ssl:
+    enabled: ${SSL_ENABLED:false}  # 生产环境启用SSL
+    key-store: ${SSL_KEY_STORE:classpath:ssl/keystore.p12}  # SSL证书路径
+    key-store-password: ${SSL_KEY_PASSWORD:}  # SSL证书密码
+    key-store-type: ${SSL_KEY_STORE_TYPE:PKCS12}  # 证书格式
+    key-alias: ${SSL_KEY_ALIAS:}  # 证书别名
+    enabled-protocols: TLSv1.2,TLSv1.3  # 强制TLS 1.2+
+  # Tomcat 配置
+  tomcat:
+    # HTTP请求重定向到HTTPS（仅当SSL启用时生效）
+    redirect-https-port: ${SSL_ENABLED:false}
+
+# 敏感数据加密配置
+encrypt:
+  # RSA配置（用于私钥/助记词加密传输）
+  rsa:
+    enabled: ${RSA_ENABLED:true}
+  # AES配置（用于交易哈希/资产ID加密传输）
+  aes:
+    key: ${AES_ENCRYPT_KEY:}  # AES密钥，从环境变量读取（Base64编码）
+
 spring:
+  # 激活的环境（引用.env的SPRING_PROFILES_ACTIVE）
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  # 数据库配置（引用.env变量，适配Docker+Druid）
   datasource:
-    url: jdbc:mysql://${DB_HOST:db}:${DB_PORT:3306}/${DB_NAME:fisco_data}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 引用.env的DB_HOST/DB_PORT/DB_NAME，适配Docker内部服务名
+    url: jdbc:mysql://${DB_HOST:db}:${DB_PORT:3306}/${DB_NAME:fisco_data}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&createDatabaseIfNotExist=true
     username: ${DB_USERNAME:fisco_user}
     password: ${DB_PASSWORD:123456}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
+    # Flyway 数据库迁移配置
+    flyway:
+      enabled: true  # 启用Flyway自动迁移
+      baseline-on-migrate: true
+      locations: classpath:db/migration
+      sql-migration-prefix: V
+      sql-migration-separator: __
+      sql-migration-suffixes: .sql
+      clean-disabled: true
+    # Druid 连接池配置（适配高并发，符合区块链项目需求）
+    druid:
+      initial-size: 5
+      max-active: 20
+      min-idle: 5
+      max-wait: 3000 # 连接超时3秒，适配区块链节点调用超时要求
+      validation-query: SELECT 1 FROM DUAL
+      test-while-idle: true
+      test-on-borrow: false
   mvc:
     pathmatch:
-      matching-strategy: ant_path_matcher
+      matching-strategy: ant_path_matcher # 适配Swagger 3.0.0
+  # Jackson 配置 - 字段命名策略
+  jackson:
+    # 请求参数下划线转驼峰，响应字段保持驼峰
+    # property-naming-strategy: LOWER_CAMEL_CASE  # Spring Boot 默认使用驼峰命名
+    # 日期格式配置
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    # JSON序列化配置
+    serialization:
+      write-dates-as-timestamps: false
+      write-null-map-values: false
 
+# Actuator 健康检查配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  health:
+    db:
+      enabled: true
+
+# MyBatis-Plus 核心配置（适配你的项目）
+mybatis-plus:
+  type-aliases-package: com.fisco.entity
+  mapper-locations: classpath:mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID # 雪花算法主键，适配分布式场景
+      table-underline: true # 下划线转驼峰，匹配字段命名规范
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 开发环境打印SQL
+    map-underscore-to-camel-case: true
+    local-cache-scope: STATEMENT # 关闭一级缓存，避免分布式数据不一致
+
+# JWT 配置（引用.env的敏感变量）
 jwt:
   secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000}
+  expiration: ${JWT_EXPIRATION:86400000} # 过期时间，默认1天
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 刷新令牌过期时间，默认7天
 
-fisco:
-  enabled: ${FISCO_ENABLED:false}
-  node-url: ${FISCO_NODE_URL:http://node0:20000}
-  group: ${FISCO_GROUP:group0}
+# 自定义加密配置（引用.env的ENCRYPTION_KEY）
+encryption:
+  key: ${ENCRYPTION_KEY}
 
-contracts:
-  # --- 1. 仓单模块 (Warehouse V2) ---
-  warehouse-v2: ${CONTRACT_WAREHOUSE_V2_ADDR}
-  warehouse-history: ${CONTRACT_WAREHOUSE_HISTORY_V2_ADDR}
-  warehouse-cancel: ${CONTRACT_WAREHOUSE_CANCEL_V2_ADDR}
-  
-  # --- 2. 票据模块 (Bill V2) ---
-  bill-v2: ${CONTRACT_BILL_V2_ADDR}
-  bill-pool: ${CONTRACT_BILL_POOL_V2_ADDR}
-  bill-split: ${CONTRACT_BILL_SPLIT_V2_ADDR}
-  bill-merge: ${CONTRACT_BILL_MERGE_V2_ADDR}
-  
-  # --- 3. 供应链金融基础模块 ---
-  receivable: ${CONTRACT_RECEIVABLE_V2_ADDR}
-  credit-limit: ${CONTRACT_CREDIT_LIMIT_V2_ADDR}
-  enterprise: ${CONTRACT_ENTERPRISE_REGISTRY_V2_ADDR}
-  
-  # --- 4. 兼容性占位 (如果旧代码仍在调用) ---
-  bill-legacy: ${CONTRACTS_BILL_ADDRESS:}
-  enterprise-v2-legacy: ${CONTRACTS_ENTERPRISE_V2_ADDRESS:0x000000000000000000000000000}
-  receivable-with-overdue: ${CONTRACTS_RECEIVABLE_WITH_OVERDUE_ADDRESS:}
+# 熔断配置（Resilience4j）
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 100
+        minimum-number-of-calls: 10
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.RestClientException
+          - java.lang.Exception
+          - java.lang.RuntimeException
+      blockchain:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 50
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - java.lang.Exception
+          - java.lang.RuntimeException
 
-server:
-  port: ${SERVER_PORT:8080}
+# 幂等性配置
+idempotent:
+  enabled: true
+  expire-hours: 24
+  cache-size: 10000
+
+# 超时控制配置
+timeout:
+  default: 5000  # 默认超时 5 秒
+  contract: 3000  # 合约调用 3 秒
+  database: 1000  # 数据库操作 1 秒
+
+# 区块链合约地址配置
+# 部署合约后，从 contract-addresses.env 复制地址到 .env 文件
+contract:
+  addresses:
+    # 企业模块
+    enterprise-registry: ${CONTRACT_ENTERPRISE:}
+    enterprise-auth: ${CONTRACT_ENTERPRISE_AUTH:}
+    # 仓单模块
+    warehouse-core: ${CONTRACT_WAREHOUSE_CORE:}
+    warehouse-ops: ${CONTRACT_WAREHOUSE_OPS:}
+    warehouse-history: ${CONTRACT_WAREHOUSE_HISTORY:}
+    # 应收款模块
+    receivable-core: ${CONTRACT_RECEIVABLE_CORE:}
+    receivable-repayment: ${CONTRACT_RECEIVABLE_REPAYMENT:}
+    # 信用模块
+    credit-core: ${CONTRACT_CREDIT_CORE:}
+    credit-score: ${CONTRACT_CREDIT_SCORE:}
+    # 物流模块
+    logistics-core: ${CONTRACT_LOGISTICS_CORE:}
+    logistics-ops: ${CONTRACT_LOGISTICS_OPS:}

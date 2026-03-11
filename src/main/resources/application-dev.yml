@@ -1,0 +1,159 @@
+# =====================================================
+# Spring Boot 开发环境配置
+# =====================================================
+# 此配置用于 docker-compose 开发模式
+
+server:
+  port: ${SERVER_PORT:8080}
+  # 开启Gzip压缩
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+    min-response-size: 1024
+
+spring:
+  # 开发环境详细日志
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+  # 数据库配置（通过环境变量注入）
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:db}:${DB_PORT:3306}/${DB_NAME:fisco_data}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&useInformationSchema=true
+    username: ${DB_USERNAME:fisco_user}
+    password: ${DB_PASSWORD:123456}
+    druid:
+      initial-size: 3
+      max-active: 10
+      min-idle: 3
+      max-wait: 5000
+      validation-query: SELECT 1 FROM DUAL
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      # 开发环境开启PSCache
+      pool-prepared-statements: true
+      max-pool-prepared-statement-per-connection-size: 20
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  type-aliases-package: com.fisco.app.entity
+  mapper-locations: classpath:mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      table-underline: true
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    # 开发环境打印SQL
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    local-cache-scope: STATEMENT
+
+# JWT 配置（开发环境）
+jwt:
+  secret: ${JWT_SECRET:dev-jwt-secret-key-for-development-only-change-this-in-production}
+  expiration: ${JWT_EXPIRATION:7200000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# 加密配置
+encryption:
+  key: ${ENCRYPTION_KEY:dev-encryption-key-for-development-only}
+
+# FISCO BCOS 配置
+fisco:
+  enabled: ${FISCO_ENABLED:true}
+  group: ${FISCO_GROUP:group0}
+  config-file: ${FISCO_CONFIG_FILE:/app/sdk/config.toml}
+  retry-times: 3
+  retry-delay: 1000
+  crypto-type: 0
+
+# 系统管理员配置
+admin:
+  username: ${ADMIN_USERNAME:admin}
+  password: ${ADMIN_PASSWORD:$2a$10$yfGt75ISFR7W67.TG2x7G.vLvZH39kncFgeDSrv4zjtdJxEO0lZ6W}  # 默认密码: admin123
+  scope: 1
+
+# 合约地址配置
+contract:
+  # 基础库
+  lib-bytes: ${CONTRACT_LIB_BYTES:0x19a6434154de51c7a7406edf312f01527441b561}
+  lib-string: ${CONTRACT_LIB_STRING:0x745d4de0cf93b7d1db8dd8892daf05ac745766ce}
+  # 企业模块
+  enterprise: 0x7a9b6d564d5d191093a29b7c760dd6af931cae73
+  enterprise-auth: ${CONTRACT_ENTERPRISE_AUTH:0xc860ab27901b3c2b810165a6096c64d88763617f}
+  # 信用模块
+  credit-core: ${CONTRACT_CREDIT_CORE:0xafcdafa5be0a0e2c34328adf10d893a591b5e774}
+  credit-score: ${CONTRACT_CREDIT_SCORE:0x6ea6907f036ff456d2f0f0a858afa9807ff4b788}
+  # 仓单模块
+  warehouse-core: ${CONTRACT_WAREHOUSE_CORE:0xeb000acf2e358cae769d308390145d9222b5577c}
+  warehouse-ops: ${CONTRACT_WAREHOUSE_OPS:0xc02dc5133c5e635c16adf4ffda4b7a2e8c5ada96}
+  warehouse-history: ${CONTRACT_WAREHOUSE_HISTORY:}
+  # 仓单合约地址 (供 WarehouseReceiptContractService 使用)
+  addresses:
+    warehouse-core: ${CONTRACT_WAREHOUSE_CORE:0xeb000acf2e358cae769d308390145d9222b5577c}
+    warehouse-ops: ${CONTRACT_WAREHOUSE_OPS:0xc02dc5133c5e635c16adf4ffda4b7a2e8c5ada96}
+  # 应收款模块
+  receivable-core: ${CONTRACT_RECEIVABLE_CORE:0xe46925ca51074d3b83ba993a4e88d0156eca6a06}
+  receivable-repayment: ${CONTRACT_RECEIVABLE_REPAYMENT:0x1d38f5d0c8c1ae7ed63a2d0ec905b9e9a17e70cf}
+  # 物流模块
+  logistics-core: ${CONTRACT_LOGISTICS_CORE:0x69ef4c5eca7bc099c2e8a8336c97af765d60dbf1}
+  logistics-ops: ${CONTRACT_LOGISTICS_OPS:0x41a1281dba209614f2ada8ecc75fd957ad179d7b}
+
+# =====================================================
+# 开发环境专用配置
+# =====================================================
+
+# CORS 允许所有
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+
+# 限流配置（开发环境可关闭）
+ratelimit:
+  enabled: ${RATE_LIMIT_ENABLED:false}
+  queries-per-second: ${RATE_LIMIT_QUERIES_PER_SECOND:100}
+  writes-per-second: ${RATE_LIMIT_WRITES_PER_SECOND:20}
+
+# 链路追踪（开发环境可关闭）
+trace:
+  enabled: ${TRACE_ENABLED:false}
+  sample-rate: ${TRACE_SAMPLE_RATE:1.0}
+
+# 文件上传配置
+file:
+  upload:
+    path: ${UPLOAD_PATH:/app/data/uploads}
+    max-size: ${UPLOAD_MAX_SIZE:10485760}
+
+# 日志配置（开发环境）
+logging:
+  level:
+    root: INFO
+    com.fisco.app: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    com.baomidou.mybatisplus: DEBUG
+    # 区块链操作日志级别
+    com.fisco.app.service.blockchain: INFO
+    com.fisco.app.service.ContractService: INFO
+  pattern:
+    # 包含traceId、userId、txHash的日志格式
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId:%X{traceId}] [userId:%X{userId}] [txHash:%X{txHash}] %-5level %logger{36} - %msg%n"
+
+# =====================================================
+# 开发工具配置
+# =====================================================
+spring-boot:
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+    livereload:
+      enabled: true

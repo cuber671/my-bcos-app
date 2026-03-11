@@ -24,21 +24,24 @@ RUN apt-get update && apt-get install -y curl tzdata libssl-dev && \
 
 WORKDIR /app
 
+# 创建日志目录
+RUN mkdir -p /app/logs
+
 # 2. 从 builder 阶段拷贝 jar 包 (确保 AS builder 定义正确)
 COPY --from=builder /app/target/*.jar app.jar
 
-# 3. 彻底解决 user dir unavailable：
-# 使用 -m 强制创建家目录，设置 HOME 环境变量
-RUN groupadd -g 1010 spring && \
-    useradd -m -u 1010 -g spring spring && \
-    mkdir -p /app/logs /app/sdk && \
-    chown -R spring:spring /app
 
-# 关键：手动设置 HOME，SDK 释放 .so 文件会用到
-ENV HOME=/home/spring
-USER spring
+# 4. 复制账户 PEM 文件（SDK 签名使用）
+COPY src/main/resources/account /app/resources/account
+
+# 5. 为 SDK 创建账户目录（使用相对路径 account）
+RUN mkdir -p /app/account/ecdsa && \
+    cp /app/resources/account/*.pem /app/account/ecdsa/ 2>/dev/null || true
+
+# 3. 关键：手动设置 HOME，SDK 释放 .so 文件会用到
+ENV HOME=/root
 
 EXPOSE 8080
 
-# 4. 增加启动参数双重保险
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.io.tmpdir=/tmp -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -jar app.jar"]
+# 4. 增加启动参数双重保险，解决中文乱码
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dfile.encoding=UTF-8 -Djava.io.tmpdir=/tmp -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -jar app.jar"]

@@ -1,0 +1,17 @@
+[cryptoMaterial]
+certPath = "conf"
+disableSsl = "true"
+useSMCrypto = "false"
+
+[network]
+messageTimeout = "10000"
+defaultGroup="group0"
+# 使用 Docker 主机名
+peers=["fisco-node0:20000", "fisco-node1:20001", "fisco-node2:20002", "fisco-node3:20003"]
+
+[account]
+keyStoreDir = "account"
+accountFileFormat = "pem"
+
+[threadPool]
+# threadPoolSize = "8"

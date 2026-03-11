@@ -1,0 +1,12 @@
+{
+  "name": "fisco-bcos-contracts",
+  "version": "1.0.0",
+  "description": "FISCO BCOS Supply Chain Finance Smart Contracts",
+  "main": "index.js",
+  "scripts": {
+    "compile": "solcjs"
+  },
+  "dependencies": {
+    "solc": "^0.8.34"
+  }
+}

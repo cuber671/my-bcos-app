@@ -9,6 +9,8 @@ peers=["127.0.0.1:20200"]
 [account]
 # 存储生成的账户文件目录
 keyStoreDir = "account"
+# 指定使用的账户地址（与部署者相同）
+accountAddress = "0x6976c14175ddfae575ffab3845d89e155e09569d"
 accountFileFormat = "pem"
 
 [threadPool]
