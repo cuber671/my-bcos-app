@@ -1,16 +1,23 @@
 # ================= 第一阶段：构建应用 =================
-# 建议直接指定完整的镜像名，避免 Docker 找不到 library 别名
+# 使用 BuildKit 缓存挂载，实现依赖持久化
+# syntax=docker/dockerfile:1.4
 FROM maven:3.9.6-eclipse-temurin-11 AS builder
 
 WORKDIR /app
 
-# 利用缓存：只在 pom 改变时才下载依赖
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# 复制 Maven 镜像配置（使用阿里云镜像加速依赖下载）
+COPY settings.xml /root/.m2/settings.xml
 
-# 复制源码并打包
+# [FIX] 优化 Docker 缓存：分离 pom.xml 和 src
+# 1. 先只复制 pom.xml，下载依赖（pom 变化才重新下载）
+COPY pom.xml .
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
+    mvn dependency:resolve -B -Dmaven.test.skip=true
+
+# 2. 再复制源码并打包（仅代码变化时重新编译）
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN --mount=type=cache,target=/root/.m2/repository,sharing=locked \
+    mvn package -DskipTests
 
 # ================= 第二阶段：运行环境 =================
 FROM eclipse-temurin:11-jre-focal
@@ -27,9 +34,8 @@ WORKDIR /app
 # 创建日志目录
 RUN mkdir -p /app/logs
 
-# 2. 从 builder 阶段拷贝 jar 包 (确保 AS builder 定义正确)
+# 2. 从 builder 阶段拷贝 jar 包
 COPY --from=builder /app/target/*.jar app.jar
-
 
 # 4. 复制账户 PEM 文件（SDK 签名使用）
 COPY src/main/resources/account /app/resources/account

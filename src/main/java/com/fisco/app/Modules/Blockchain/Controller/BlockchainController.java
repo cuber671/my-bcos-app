@@ -193,7 +193,8 @@ public class BlockchainController {
 
     @ApiOperation("调用合约只读方法")
     @PostMapping("/call")
-    public Result<CallResponse> callContract(@RequestBody ContractCallRequest request) {
+    public Result<CallResponse> callContract(
+            @ApiParam(value = "合约调用信息", required = true) @RequestBody ContractCallRequest request) {
         try {
             if (request.getContractAddress() == null || request.getAbi() == null
                     || request.getMethod() == null) {
@@ -221,7 +222,8 @@ public class BlockchainController {
     @ApiOperation("发送合约交易")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @PostMapping("/transaction")
-    public Result<Object> sendTransaction(@RequestBody ContractCallRequest request) {
+    public Result<Object> sendTransaction(
+            @ApiParam(value = "合约交易信息", required = true) @RequestBody ContractCallRequest request) {
         try {
             if (request.getContractAddress() == null || request.getAbi() == null
                     || request.getMethod() == null) {

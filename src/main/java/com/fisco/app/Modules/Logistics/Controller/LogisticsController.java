@@ -64,7 +64,9 @@ public class LogisticsController {
      */
     @ApiOperation("创建物流委派单")
     @PostMapping("/create")
-    public Result<LogisticsDelegate> createDelegate(@RequestBody LogisticsDelegate delegate, HttpServletRequest request) {
+    public Result<LogisticsDelegate> createDelegate(
+            @ApiParam(value = "委派单信息", required = true) @RequestBody LogisticsDelegate delegate,
+            HttpServletRequest request) {
         try {
             // 参数校验
             if (delegate.getBusinessScene() == null) {
@@ -117,7 +119,9 @@ public class LogisticsController {
      */
     @ApiOperation("查询委派单详情")
     @GetMapping("/delegate/{voucherNo}")
-    public Result<LogisticsDelegate> getDelegate(@PathVariable String voucherNo, HttpServletRequest request) {
+    public Result<LogisticsDelegate> getDelegate(
+            @ApiParam(value = "委派单编号", required = true) @PathVariable String voucherNo,
+            HttpServletRequest request) {
         try {
             Long entId = CurrentUser.getEntId();
             if (entId == null) {
@@ -195,7 +199,7 @@ public class LogisticsController {
     @ApiOperation("物流指派任务")
     @PostMapping("/assign")
     public Result<LogisticsDelegate> assignDriver(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "指派信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNo = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;
@@ -257,7 +261,7 @@ public class LogisticsController {
     @ApiOperation("仓库提货确认")
     @PostMapping("/pickup")
     public Result<LogisticsDelegate> confirmPickup(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "提货确认信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNo = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;
@@ -305,7 +309,7 @@ public class LogisticsController {
     @ApiOperation("到货入库申请")
     @PostMapping("/arrive")
     public Result<LogisticsDelegate> arrive(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "到货入库信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNoStr = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;
@@ -501,7 +505,9 @@ public class LogisticsController {
      */
     @ApiOperation("上报物流轨迹")
     @PostMapping("/track/report")
-    public Result<LogisticsTrack> reportTrack(@RequestBody LogisticsTrack track, HttpServletRequest request) {
+    public Result<LogisticsTrack> reportTrack(
+            @ApiParam(value = "轨迹信息", required = true) @RequestBody LogisticsTrack track,
+            HttpServletRequest request) {
         try {
             Long entId = CurrentUser.getEntId();
             if (entId == null) {
@@ -539,7 +545,7 @@ public class LogisticsController {
     @ApiOperation("更新物流状态")
     @PutMapping("/status")
     public Result<LogisticsDelegate> updateStatus(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "状态更新信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNo = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;
@@ -590,7 +596,7 @@ public class LogisticsController {
     @ApiOperation("确认交付")
     @PostMapping("/delivery/confirm")
     public Result<LogisticsDelegate> confirmDelivery(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "交付确认信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNo = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;
@@ -636,7 +642,7 @@ public class LogisticsController {
     @ApiOperation("使委派单失效")
     @PostMapping("/invalidate")
     public Result<LogisticsDelegate> invalidate(
-            @RequestBody Map<String, Object> params,
+            @ApiParam(value = "失效操作信息", required = true) @RequestBody Map<String, Object> params,
             HttpServletRequest request) {
         try {
             String voucherNo = params.get("voucherNo") != null ? params.get("voucherNo").toString() : null;

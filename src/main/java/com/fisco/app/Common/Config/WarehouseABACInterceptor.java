@@ -308,13 +308,17 @@ public class WarehouseABACInterceptor implements HandlerInterceptor {
             throws IOException {
 
         Long userEntId = JwtUtil.getEntId(claims);
-        String entRoleStr = JwtUtil.getRole(claims);
-        Integer entRole = null;
-        if (entRoleStr != null) {
-            try {
-                entRole = Integer.parseInt(entRoleStr);
-            } catch (NumberFormatException e) {
-                log.warn("企业角色无法转换为整数: {}", entRoleStr);
+        // 获取企业角色（整数类型）- 优先从entRole claim获取，其次从role字符串尝试解析
+        Integer entRole = JwtUtil.getEntRole(claims);
+        if (entRole == null) {
+            // 兼容旧版token：尝试从role字符串解析
+            String entRoleStr = JwtUtil.getRole(claims);
+            if (entRoleStr != null) {
+                try {
+                    entRole = Integer.parseInt(entRoleStr);
+                } catch (NumberFormatException e) {
+                    log.warn("企业角色无法转换为整数: {}", entRoleStr);
+                }
             }
         }
 

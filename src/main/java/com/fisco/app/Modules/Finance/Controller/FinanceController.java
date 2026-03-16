@@ -66,7 +66,8 @@ public class FinanceController {
     @ApiOperation("生成应收款")
     @PostMapping("/receivable/generate")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
-    public Result<ReceivableResponse> generateReceivable(@RequestBody GenerateReceivableRequest request) {
+    public Result<ReceivableResponse> generateReceivable(
+            @ApiParam(value = "生成应收款信息", required = true) @RequestBody GenerateReceivableRequest request) {
         try {
             // 参数校验
             if (request.getVoucherId() == null) {
@@ -111,7 +112,8 @@ public class FinanceController {
      */
     @ApiOperation("确认应收款")
     @PostMapping("/receivable/confirm")
-    public Result<ReceivableResponse> confirmReceivable(@RequestBody ConfirmReceivableRequest request) {
+    public Result<ReceivableResponse> confirmReceivable(
+            @ApiParam(value = "确认应收款信息", required = true) @RequestBody ConfirmReceivableRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -172,7 +174,8 @@ public class FinanceController {
     @ApiOperation("调整应收款金额")
     @PatchMapping("/receivable/adjust")
     @RequireRole(value = {"ADMIN", "FINANCE"}, adminBypass = true)
-    public Result<ReceivableResponse> adjustReceivable(@RequestBody AdjustReceivableRequest request) {
+    public Result<ReceivableResponse> adjustReceivable(
+            @ApiParam(value = "调整应收款信息", required = true) @RequestBody AdjustReceivableRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -241,7 +244,8 @@ public class FinanceController {
     @ApiOperation("现金还款")
     @PostMapping("/repayment/cash")
     @RequireRole(value = {"ADMIN", "FINANCE"}, adminBypass = true)
-    public Result<RepaymentRecordResponse> cashRepayment(@RequestBody CashRepaymentRequest request) {
+    public Result<RepaymentRecordResponse> cashRepayment(
+            @ApiParam(value = "现金还款信息", required = true) @RequestBody CashRepaymentRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -305,7 +309,8 @@ public class FinanceController {
     @ApiOperation("仓单抵债核销")
     @PostMapping("/repayment/offset")
     @RequireRole(value = {"ADMIN", "FINANCE"}, adminBypass = true)
-    public Result<RepaymentRecordResponse> offsetWithCollateral(@RequestBody OffsetWithCollateralRequest request) {
+    public Result<RepaymentRecordResponse> offsetWithCollateral(
+            @ApiParam(value = "仓单抵债信息", required = true) @RequestBody OffsetWithCollateralRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -374,7 +379,8 @@ public class FinanceController {
     @ApiOperation("应收款融资")
     @PostMapping("/receivable/finance")
     @RequireRole(value = {"ADMIN", "FINANCE"}, adminBypass = true)
-    public Result<ReceivableResponse> financeReceivable(@RequestBody FinanceReceivableRequest request) {
+    public Result<ReceivableResponse> financeReceivable(
+            @ApiParam(value = "应收款融资信息", required = true) @RequestBody FinanceReceivableRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -439,7 +445,8 @@ public class FinanceController {
     @ApiOperation("应收款结算")
     @PostMapping("/receivable/settle")
     @RequireRole(value = {"ADMIN", "FINANCE"}, adminBypass = true)
-    public Result<ReceivableResponse> settleReceivable(@RequestBody SettleReceivableRequest request) {
+    public Result<ReceivableResponse> settleReceivable(
+            @ApiParam(value = "应收款结算信息", required = true) @RequestBody SettleReceivableRequest request) {
         try {
             // 参数校验
             if (request.getReceivableId() == null) {
@@ -612,8 +619,8 @@ public class FinanceController {
     @GetMapping("/receivable/ent/{entId}")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     public Result<Map<String, Object>> listByEnterprise(
-            @ApiParam("企业ID") @PathVariable("entId") Long entId,
-            @ApiParam("角色类型: creditor-债权人, debtor-债务人") @RequestParam(defaultValue = "creditor") String roleType) {
+            @ApiParam(value = "企业ID", required = true) @PathVariable("entId") Long entId,
+            @ApiParam("角色类型") @RequestParam(defaultValue = "creditor") String roleType) {
         try {
             if (entId == null) {
                 return Result.error(400, "企业ID不能为空");

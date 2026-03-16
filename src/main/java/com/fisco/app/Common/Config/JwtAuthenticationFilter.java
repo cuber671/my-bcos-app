@@ -92,6 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/v3/api-docs/**",
             "/webjars/**",
             "/actuator/**",
+            "/api/v1/health",
             "/api/v1/enterprise/register",
             "/api/v1/enterprise/login",
             "/api/v1/enterprise/admin/login",

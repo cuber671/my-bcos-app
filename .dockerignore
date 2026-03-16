@@ -1,0 +1,27 @@
+# Maven 缓存目录
+target/
+
+# IDE 配置
+.idea/
+*.iml
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# 文档
+*.md
+docs/
+
+# 测试
+src/test/
+
+# 其他
+*.log
+*.tmp

@@ -54,7 +54,8 @@ public class UserController {
      */
     @ApiOperation("员工注册")
     @PostMapping("/register")
-    public Result<Map<String, Object>> registerUser(@RequestBody UserRegisterRequest request) {
+    public Result<Map<String, Object>> registerUser(
+            @ApiParam(value = "注册信息", required = true) @RequestBody UserRegisterRequest request) {
         try {
             // 参数校验
             if (request.getUsername() == null || request.getUsername().isEmpty()) {
@@ -102,7 +103,8 @@ public class UserController {
      */
     @ApiOperation("员工登录")
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(@RequestBody LoginRequest request) {
+    public Result<Map<String, Object>> login(
+            @ApiParam(value = "登录信息", required = true) @RequestBody LoginRequest request) {
         try {
             if (request.getUsername() == null || request.getUsername().isEmpty()) {
                 return Result.error(400, "用户名不能为空");
@@ -180,7 +182,9 @@ public class UserController {
      */
     @ApiOperation("修改个人信息")
     @PutMapping("/update")
-    public Result<Void> updateUserInfo(@RequestBody UserUpdateRequest request, javax.servlet.http.HttpServletRequest httpRequest) {
+    public Result<Void> updateUserInfo(
+            @ApiParam(value = "用户信息", required = true) @RequestBody UserUpdateRequest request,
+            javax.servlet.http.HttpServletRequest httpRequest) {
         try {
             // 仅从JWT获取userId，防止越权
             Object userIdAttr = httpRequest.getAttribute("user_id");
@@ -217,7 +221,9 @@ public class UserController {
      */
     @ApiOperation("修改登录密码")
     @PostMapping("/password")
-    public Result<Void> updatePassword(@RequestBody PasswordUpdateRequest request, javax.servlet.http.HttpServletRequest httpRequest) {
+    public Result<Void> updatePassword(
+            @ApiParam(value = "密码信息", required = true) @RequestBody PasswordUpdateRequest request,
+            javax.servlet.http.HttpServletRequest httpRequest) {
         try {
             // 仅从JWT获取userId，防止越权
             Object userIdAttr = httpRequest.getAttribute("user_id");
@@ -262,7 +268,7 @@ public class UserController {
     @ApiOperation("发起注销申请")
     @PostMapping("/cancel/apply")
     public Result<CancellationResult> applyCancellation(
-            @RequestBody CancellationApplyRequest request,
+            @ApiParam(value = "注销申请信息", required = true) @RequestBody CancellationApplyRequest request,
             javax.servlet.http.HttpServletRequest httpRequest) {
         try {
             // JWT 自动获取 userId
@@ -306,7 +312,7 @@ public class UserController {
     @ApiOperation("撤回注销申请")
     @PostMapping("/cancel/revoke")
     public Result<Void> revokeCancellation(
-            @RequestParam(required = false) Long userId,
+            @ApiParam("用户ID") @RequestParam(required = false) Long userId,
             javax.servlet.http.HttpServletRequest request) {
         try {
             // JWT 自动获取 userId
@@ -343,7 +349,7 @@ public class UserController {
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @GetMapping("/cancel/pending")
     public Result<List<User>> getPendingCancellationUsers(
-            @RequestParam(required = false) Long enterpriseId,
+            @ApiParam("企业ID") @RequestParam(required = false) Long enterpriseId,
             javax.servlet.http.HttpServletRequest request) {
         try {
             List<User> list = userService.getPendingCancellationUsers(enterpriseId);
@@ -361,10 +367,8 @@ public class UserController {
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @PostMapping("/{userId}/cancel/audit")
     public Result<Void> auditCancellation(
-            @ApiParam(value = "用户ID", required = true)
-            @PathVariable Long userId,
-            @ApiParam(value = "审核结果: true-通过(设为已注销), false-拒绝(恢复正常)", required = true)
-            @RequestBody AuditUserRequest request) {
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
+            @ApiParam(value = "审核结果", required = true) @RequestBody AuditUserRequest request) {
         try {
             if (userId == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -397,7 +401,7 @@ public class UserController {
     @ApiOperation("查询企业员工列表")
     @GetMapping("/list")
     public Result<List<User>> getUserList(
-            @RequestParam(required = false) Long enterpriseId,
+            @ApiParam("企业ID") @RequestParam(required = false) Long enterpriseId,
             javax.servlet.http.HttpServletRequest request) {
         try {
             // 如果未指定enterpriseId，从当前登录用户获取
@@ -427,7 +431,7 @@ public class UserController {
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @GetMapping("/pending")
     public Result<List<User>> getPendingUsers(
-            @RequestParam(required = false) Long enterpriseId,
+            @ApiParam("企业ID") @RequestParam(required = false) Long enterpriseId,
             javax.servlet.http.HttpServletRequest request) {
         try {
             List<User> list = userService.getPendingUsers(enterpriseId);
@@ -445,10 +449,8 @@ public class UserController {
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @PostMapping("/{userId}/audit")
     public Result<Void> auditUser(
-            @ApiParam(value = "用户ID", required = true)
-            @PathVariable Long userId,
-            @ApiParam(value = "审核结果: true-通过(设为正常), false-拒绝(设为冻结)", required = true)
-            @RequestBody AuditUserRequest request) {
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
+            @ApiParam(value = "审核结果", required = true) @RequestBody AuditUserRequest request) {
         try {
             if (userId == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -478,7 +480,8 @@ public class UserController {
      */
     @ApiOperation("获取指定用户信息")
     @GetMapping("/{userId}")
-    public Result<User> getUserById(@PathVariable Long userId) {
+    public Result<User> getUserById(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         try {
             if (userId == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -502,7 +505,8 @@ public class UserController {
      */
     @ApiOperation("分配员工角色")
     @PutMapping("/assign_role")
-    public Result<Void> assignRole(@RequestBody AssignRoleRequest request) {
+    public Result<Void> assignRole(
+            @ApiParam(value = "角色分配信息", required = true) @RequestBody AssignRoleRequest request) {
         try {
             if (request.getUserId() == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -533,7 +537,8 @@ public class UserController {
      */
     @ApiOperation("禁用/启用员工")
     @PutMapping("/status")
-    public Result<Void> updateUserStatus(@RequestBody UserStatusRequest request) {
+    public Result<Void> updateUserStatus(
+            @ApiParam(value = "用户状态信息", required = true) @RequestBody UserStatusRequest request) {
         try {
             if (request.getUserId() == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -564,7 +569,8 @@ public class UserController {
      */
     @ApiOperation("强制禁用员工")
     @PutMapping("/disable/{userId}")
-    public Result<Void> disableUser(@PathVariable Long userId) {
+    public Result<Void> disableUser(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         try {
             if (userId == null) {
                 return Result.error(400, "用户ID不能为空");
@@ -592,7 +598,8 @@ public class UserController {
      */
     @ApiOperation("删除用户（离职）")
     @DeleteMapping("/{userId}")
-    public Result<Void> deleteUser(@PathVariable Long userId) {
+    public Result<Void> deleteUser(
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId) {
         try {
             if (userId == null) {
                 return Result.error(400, "用户ID不能为空");

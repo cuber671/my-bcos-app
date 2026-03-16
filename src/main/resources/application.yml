@@ -27,6 +27,26 @@ spring:
   # 激活的环境（引用.env的SPRING_PROFILES_ACTIVE）
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  # 禁用 Springfox Swagger，使用 Springdoc
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+# 禁用 Springfox
+springfox:
+  documentation:
+    enabled: false
+
+# Springdoc 配置
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
   # 数据库配置（引用.env变量，适配Docker+Druid）
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource

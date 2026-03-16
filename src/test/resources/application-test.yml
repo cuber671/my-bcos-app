@@ -1,0 +1,80 @@
+# src/test/resources/application-test.yml
+# Test configuration for FISCO BCOS Supply Chain Finance Platform
+
+server:
+  port: 8080
+
+spring:
+  datasource:
+    # H2内存数据库用于单元测试
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: false
+
+mybatis-plus:
+  type-aliases-package: com.fisco.app.Modules
+  mapper-locations: classpath:mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      table-underline: true
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+
+jwt:
+  secret: test-jwt-secret-key-for-unit-testing-only-do-not-use-in-production
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+encryption:
+  key: test-encryption-key-32bytes-long
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+      blockchain:
+        failure-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+
+idempotent:
+  enabled: false
+
+timeout:
+  default: 10000
+
+fisco:
+  enabled: false
+
+contract:
+  enterprise: "0x0000000000000000000000000000000000000001"
+  enterprise-auth: "0x0000000000000000000000000000000000000002"
+  warehouse-core: "0x0000000000000000000000000000000000000003"
+  warehouse-ops: "0x0000000000000000000000000000000000000004"
+  warehouse-history: "0x0000000000000000000000000000000000000005"
+  receivable-core: "0x0000000000000000000000000000000000000006"
+  receivable-repayment: "0x0000000000000000000000000000000000000007"
+  credit-core: "0x0000000000000000000000000000000000000008"
+  credit-score: "0x0000000000000000000000000000000000000009"
+  logistics-core: "0x000000000000000000000000000000000000000a"
+  logistics-ops: "0x000000000000000000000000000000000000000b"

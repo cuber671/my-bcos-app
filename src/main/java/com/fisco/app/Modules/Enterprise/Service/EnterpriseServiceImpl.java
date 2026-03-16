@@ -47,7 +47,7 @@ public class EnterpriseServiceImpl implements EnterpriseService {
     @Autowired
     private EncryptionService encryptionService;
 
-    @Autowired
+    @Autowired(required = false)
     private BlockchainConfig blockchainConfig;
 
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -105,26 +105,31 @@ public class EnterpriseServiceImpl implements EnterpriseService {
 
         try {
             // 使用SDK生成密钥对（包含地址和私钥）
-            BlockchainConfig.KeyPairInfo keyPairInfo = blockchainConfig.generateKeyPairWithPrivateKey();
-            if (keyPairInfo == null) {
-                logger.warn("密钥对生成失败，使用空地址");
+            if (blockchainConfig == null) {
+                logger.warn("区块链配置不可用，使用空地址");
                 enterprise.setBlockchainAddress(null);
                 enterprise.setEncryptedPrivateKey(null);
             } else {
-                String blockchainAddress = keyPairInfo.getAddress();
-                String privateKey = keyPairInfo.getPrivateKey();
+                BlockchainConfig.KeyPairInfo keyPairInfo = blockchainConfig.generateKeyPairWithPrivateKey();
+                if (keyPairInfo == null) {
+                    logger.warn("密钥对生成失败，使用空地址");
+                    enterprise.setBlockchainAddress(null);
+                    enterprise.setEncryptedPrivateKey(null);
+                } else {
+                    String blockchainAddress = keyPairInfo.getAddress();
+                    String privateKey = keyPairInfo.getPrivateKey();
 
-                // 加密存储私钥
-                String encryptedPrivateKey = privateKey != null
-                    ? encryptionService.encryptWithAes(privateKey)
-                    : null;
+                    // 加密存储私钥
+                    String encryptedPrivateKey = privateKey != null
+                        ? encryptionService.encryptWithAes(privateKey)
+                        : null;
 
-                enterprise.setBlockchainAddress(blockchainAddress);
-                enterprise.setEncryptedPrivateKey(encryptedPrivateKey);
+                    enterprise.setBlockchainAddress(blockchainAddress);
+                    enterprise.setEncryptedPrivateKey(encryptedPrivateKey);
 
-                logger.info("为企业生成区块链地址: {}", blockchainAddress);
+                    logger.info("为企业生成区块链地址: {}", blockchainAddress);
+                }
             }
-
         } catch (Exception e) {
             logger.warn("生成区块链地址失败，使用空地址: {}", e.getMessage());
             // 区块链地址可后续补充
@@ -242,19 +247,32 @@ public class EnterpriseServiceImpl implements EnterpriseService {
         enterprise.setStatus(newStatus);
         enterpriseMapper.updateById(enterprise);
 
-        // 同步更新区块链状态
+        // 仅当企业已在区块链上注册时才更新链上状态
         try {
             if (enterprise.getBlockchainAddress() != null) {
-                // 正常状态对应区块链1，冻结对应0
-                BigInteger chainStatus = newStatus == Enterprise.STATUS_NORMAL
-                        ? BigInteger.ONE
-                        : BigInteger.ZERO;
-                enterpriseContractService.updateEnterpriseStatus(
-                        enterprise.getBlockchainAddress(),
-                        chainStatus
-                );
-                logger.info("企业状态上链成功: entId={}, oldStatus={}, newStatus={}",
-                        entId, oldStatus, newStatus);
+                // 检查企业是否已在区块链上注册
+                boolean isRegisteredOnChain = false;
+                try {
+                    var info = enterpriseContractService.getEnterprise(enterprise.getBlockchainAddress());
+                    isRegisteredOnChain = info != null && !"0x0000000000000000000000000000000000000000".equals(info.getAddress());
+                } catch (Exception e) {
+                    logger.debug("查询企业链上信息失败，可能未注册: entId={}", entId);
+                }
+
+                if (isRegisteredOnChain) {
+                    // 正常状态对应区块链1，冻结对应0
+                    BigInteger chainStatus = newStatus == Enterprise.STATUS_NORMAL
+                            ? BigInteger.ONE
+                            : BigInteger.ZERO;
+                    enterpriseContractService.updateEnterpriseStatus(
+                            enterprise.getBlockchainAddress(),
+                            chainStatus
+                    );
+                    logger.info("企业状态上链成功: entId={}, oldStatus={}, newStatus={}",
+                            entId, oldStatus, newStatus);
+                } else {
+                    logger.info("企业未在区块链上注册，跳过链上状态更新: entId={}", entId);
+                }
             }
         } catch (Exception e) {
             logger.error("企业状态上链失败: entId={}", entId, e);

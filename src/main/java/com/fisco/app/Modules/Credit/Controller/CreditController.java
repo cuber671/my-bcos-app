@@ -68,15 +68,17 @@ public class CreditController {
     @ApiOperation("获取企业信用画像")
     @GetMapping("/profile")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
-    public Result<CreditPortraitResponse> getCreditProfile(HttpServletRequest request) {
+    public Result<CreditPortraitResponse> getCreditProfile(
+            @ApiParam(value = "企业ID，不传则查询当前企业") @RequestParam(required = false) Long entId,
+            HttpServletRequest request) {
         try {
             // 仅从JWT获取企业信息，防止越权
-            Long entId = CurrentUser.getEntId();
-            if (entId == null) {
+            Long actualEntId = entId != null ? entId : CurrentUser.getEntId();
+            if (actualEntId == null) {
                 return Result.error(401, "无法获取当前企业信息，请先登录");
             }
 
-            CreditPortrait portrait = creditService.getCreditPortrait(entId);
+            CreditPortrait portrait = creditService.getCreditPortrait(actualEntId);
             return Result.success(convertToPortraitResponse(portrait));
 
         } catch (Exception e) {
@@ -115,15 +117,17 @@ public class CreditController {
     @ApiOperation("获取信用评分")
     @GetMapping("/score")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
-    public Result<CreditScoreResultResponse> getCreditScore(HttpServletRequest request) {
+    public Result<CreditScoreResultResponse> getCreditScore(
+            @ApiParam(value = "企业ID，不传则查询当前企业") @RequestParam(required = false) Long entId,
+            HttpServletRequest request) {
         try {
             // 仅从JWT获取企业信息，防止越权
-            Long entId = CurrentUser.getEntId();
-            if (entId == null) {
+            Long actualEntId = entId != null ? entId : CurrentUser.getEntId();
+            if (actualEntId == null) {
                 return Result.error(401, "无法获取当前企业信息，请先登录");
             }
 
-            CreditScoreResult scoreResult = creditService.getCreditScore(entId);
+            CreditScoreResult scoreResult = creditService.getCreditScore(actualEntId);
             return Result.success(convertToScoreResponse(scoreResult));
 
         } catch (Exception e) {
@@ -144,7 +148,8 @@ public class CreditController {
     @ApiOperation("上报信用事件")
     @PostMapping("/event/report")
     @RequireRole(value = {"ADMIN", "RISK"}, adminBypass = true)
-    public Result<Map<String, Object>> reportCreditEvent(@RequestBody CreditEventReportRequest request) {
+    public Result<Map<String, Object>> reportCreditEvent(
+            @ApiParam(value = "信用事件信息", required = true) @RequestBody CreditEventReportRequest request) {
         try {
             // 参数校验
             if (request.getEntId() == null) {
@@ -191,7 +196,7 @@ public class CreditController {
     @PostMapping("/event/logistics-deviation")
     @RequireRole(value = {"ADMIN", "RISK", "LOGISTICS"}, adminBypass = true)
     public Result<Map<String, Object>> reportLogisticsDeviation(
-            @RequestBody LogisticsDeviationRequest request) {
+            @ApiParam(value = "偏航事件信息", required = true) @RequestBody LogisticsDeviationRequest request) {
         try {
             // 参数校验
             if (request.getEntId() == null) {
@@ -340,7 +345,7 @@ public class CreditController {
     @ApiOperation("额度校验")
     @PostMapping("/limit/check")
     public Result<LimitCheckResultResponse> checkCreditLimit(
-            @RequestBody CreditLimitCheckRequest request,
+            @ApiParam(value = "额度校验信息", required = true) @RequestBody CreditLimitCheckRequest request,
             HttpServletRequest httpRequest) {
         try {
             // 获取企业ID
@@ -404,18 +409,20 @@ public class CreditController {
     @ApiOperation("获取可用信用额度")
     @GetMapping("/limit/available")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
-    public Result<Map<String, Object>> getAvailableCreditLimit(HttpServletRequest request) {
+    public Result<Map<String, Object>> getAvailableCreditLimit(
+            @ApiParam(value = "企业ID，不传则查询当前企业") @RequestParam(required = false) Long entId,
+            HttpServletRequest request) {
         try {
             // 仅从JWT获取企业信息，防止越权
-            Long entId = CurrentUser.getEntId();
-            if (entId == null) {
+            Long actualEntId = entId != null ? entId : CurrentUser.getEntId();
+            if (actualEntId == null) {
                 return Result.error(401, "无法获取当前企业信息，请先登录");
             }
 
-            BigDecimal available = creditService.getAvailableCreditLimit(entId);
+            BigDecimal available = creditService.getAvailableCreditLimit(actualEntId);
 
             Map<String, Object> result = new HashMap<>();
-            result.put("entId", entId);
+            result.put("entId", actualEntId);
             result.put("availableLimit", available);
 
             return Result.success(result);
@@ -472,6 +479,7 @@ public class CreditController {
     @PatchMapping("/reevaluate/batch")
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     public Result<Map<String, Object>> batchRecalculateCreditLevel(
+            @ApiParam(value = "批量重算企业ID列表", required = true)
             @RequestBody BatchRecalculateRequest request) {
         try {
             if (request.getEntIds() == null || request.getEntIds().isEmpty()) {

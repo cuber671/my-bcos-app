@@ -38,13 +38,13 @@ public abstract class BaseContractService {
 
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    @Autowired
+    @Autowired(required = false)
     protected Client client;
 
-    @Autowired
+    @Autowired(required = false)
     protected CryptoKeyPair cryptoKeyPair;
 
-    @Autowired
+    @Autowired(required = false)
     protected BlockchainConfig blockchainConfig;
 
     @Autowired(required = false)

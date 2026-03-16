@@ -31,6 +31,7 @@ import com.fisco.app.Modules.Warehouse.Service.WarehouseReceiptService.TraceInfo
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 
 /**
  * 仓单管理 Controller
@@ -53,7 +54,8 @@ public class WarehouseReceiptController {
 
     @ApiOperation("申请入库")
     @PostMapping("/stock-in/apply")
-    public Result<Long> applyStockIn(@RequestBody StockInApplyRequest request) {
+    public Result<Long> applyStockIn(
+            @ApiParam(value = "入库申请信息", required = true) @RequestBody StockInApplyRequest request) {
         try {
             // 参数校验
             if (request.getWarehouseId() == null) {
@@ -96,7 +98,8 @@ public class WarehouseReceiptController {
     @ApiOperation("确认入库单（仓储方操作）")
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可确认入库单")
     @PostMapping("/stock-in/{stockOrderId}/confirm")
-    public Result<Boolean> confirmStockOrder(@PathVariable String stockOrderId) {
+    public Result<Boolean> confirmStockOrder(
+            @ApiParam(value = "入库单ID或编号", required = true) @PathVariable String stockOrderId) {
         try {
             StockOrder order = getStockOrderByIdOrStockNo(stockOrderId);
             if (order == null) {
@@ -115,7 +118,8 @@ public class WarehouseReceiptController {
     @ApiOperation("取消入库单")
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可取消入库单")
     @PostMapping("/stock-in/{stockOrderId}/cancel")
-    public Result<Boolean> cancelStockOrder(@PathVariable String stockOrderId) {
+    public Result<Boolean> cancelStockOrder(
+            @ApiParam(value = "入库单ID或编号", required = true) @PathVariable String stockOrderId) {
         try {
             StockOrder order = getStockOrderByIdOrStockNo(stockOrderId);
             if (order == null) {
@@ -134,7 +138,8 @@ public class WarehouseReceiptController {
     @ApiOperation("查询入库单")
     @StockOrderOwnership(paramName = "stockOrderId", errorMessage = "无权限操作：非入库单所属企业无权查询")
     @GetMapping("/stock-in/{stockOrderId}")
-    public Result<StockOrder> getStockOrderById(@PathVariable String stockOrderId) {
+    public Result<StockOrder> getStockOrderById(
+            @ApiParam(value = "入库单ID或编号", required = true) @PathVariable String stockOrderId) {
         try {
             StockOrder stockOrder = getStockOrderByIdOrStockNo(stockOrderId);
             if (stockOrder == null) {
@@ -162,7 +167,8 @@ public class WarehouseReceiptController {
     @ApiOperation("签发仓单（仓储方操作）")
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可签发仓单")
     @PostMapping("/receipt/mint")
-    public Result<Long> mintReceipt(@RequestBody MintReceiptRequest request) {
+    public Result<Long> mintReceipt(
+            @ApiParam(value = "签发仓单信息", required = true) @RequestBody MintReceiptRequest request) {
         try {
             // 参数校验
             if (request.getStockOrderId() == null) {
@@ -193,7 +199,8 @@ public class WarehouseReceiptController {
     @ApiOperation("根据ID查询仓单")
     @WarehouseReceiptOwnership(paramName = "receiptId", errorMessage = "无权限操作：非仓单相关方无权查询")
     @GetMapping("/receipt/{receiptId}")
-    public Result<WarehouseReceipt> getReceiptById(@PathVariable String receiptId) {
+    public Result<WarehouseReceipt> getReceiptById(
+            @ApiParam(value = "仓单ID", required = true) @PathVariable String receiptId) {
         try {
             Long id = parseId(receiptId, "仓单ID");
             WarehouseReceipt receipt = warehouseReceiptService.getReceiptById(id);
@@ -205,7 +212,8 @@ public class WarehouseReceiptController {
 
     @ApiOperation("根据链上ID查询仓单")
     @GetMapping("/receipt/by-chain/{onChainId}")
-    public Result<WarehouseReceipt> getReceiptByOnChainId(@PathVariable String onChainId) {
+    public Result<WarehouseReceipt> getReceiptByOnChainId(
+            @ApiParam(value = "链上ID", required = true) @PathVariable String onChainId) {
         WarehouseReceipt receipt = warehouseReceiptService.getReceiptByOnChainId(onChainId);
         return Result.success(receipt);
     }
@@ -238,7 +246,8 @@ public class WarehouseReceiptController {
     @WarehouseReceiptOwnership(paramName = "receiptId", fromBody = true, errorMessage = "无权限操作：仅仓单持有人可发起背书转让")
     @WarehouseStatusCheck(paramName = "receiptId", requiredLocked = false, errorMessage = "仓单已锁定，无法发起背书转让")
     @PostMapping("/endorsement/launch")
-    public Result<Long> launchEndorsement(@RequestBody LaunchEndorsementRequest request) {
+    public Result<Long> launchEndorsement(
+            @ApiParam(value = "背书转让信息", required = true) @RequestBody LaunchEndorsementRequest request) {
         try {
             // 仅从JWT获取用户信息，防止越权
             Long userId = CurrentUser.getUserId();
@@ -263,8 +272,8 @@ public class WarehouseReceiptController {
     @ApiOperation("确认/拒绝背书转让")
     @PostMapping("/endorsement/{endorsementId}/confirm")
     public Result<Boolean> confirmEndorsement(
-            @PathVariable String endorsementId,
-            @RequestParam Boolean accept) {
+            @ApiParam(value = "背书ID", required = true) @PathVariable String endorsementId,
+            @ApiParam(value = "是否接受", required = true) @RequestParam Boolean accept) {
         try {
             Long id = parseId(endorsementId, "背书ID");
             // 校验权限：仅被背书目标企业可确认（特殊业务校验，保留手动检查）
@@ -288,7 +297,8 @@ public class WarehouseReceiptController {
 
     @ApiOperation("撤回背书")
     @PostMapping("/endorsement/{endorsementId}/revoke")
-    public Result<Boolean> revokeEndorsement(@PathVariable String endorsementId) {
+    public Result<Boolean> revokeEndorsement(
+            @ApiParam(value = "背书ID", required = true) @PathVariable String endorsementId) {
         try {
             Long id = parseId(endorsementId, "背书ID");
             // 校验权限：仅背书发起方可撤回（特殊业务校验，保留手动检查）
@@ -307,7 +317,8 @@ public class WarehouseReceiptController {
     @ApiOperation("查询仓单背书记录")
     @WarehouseReceiptOwnership(paramName = "receiptId", errorMessage = "无权限操作：非仓单相关方无权查询背书记录")
     @GetMapping("/endorsement/list")
-    public Result<List<ReceiptEndorsement>> getEndorsementsByReceiptId(@RequestParam Long receiptId) {
+    public Result<List<ReceiptEndorsement>> getEndorsementsByReceiptId(
+            @ApiParam(value = "仓单ID", required = true) @RequestParam Long receiptId) {
         List<ReceiptEndorsement> list = warehouseReceiptService.getEndorsementsByReceiptId(receiptId);
         return Result.success(list);
     }
@@ -318,7 +329,8 @@ public class WarehouseReceiptController {
     @WarehouseReceiptOwnership(paramName = "receiptId", fromBody = true, errorMessage = "无权限操作：仅仓单持有人可发起拆分申请")
     @WarehouseStatusCheck(paramName = "receiptId", requiredLocked = false, requiredStatus = {1}, errorMessage = "仓单已锁定或状态不满足拆分条件")
     @PostMapping("/split/apply")
-    public Result<Long> applySplit(@RequestBody ApplySplitRequest request) {
+    public Result<Long> applySplit(
+            @ApiParam(value = "拆分申请信息", required = true) @RequestBody ApplySplitRequest request) {
         try {
             // 仅从JWT获取用户信息，防止越权
             Long userId = CurrentUser.getUserId();
@@ -342,7 +354,8 @@ public class WarehouseReceiptController {
     @WarehouseReceiptOwnership(paramName = "receiptId", fromBody = true, errorMessage = "无权限操作：仅仓单持有人可发起合并申请")
     @WarehouseStatusCheck(paramName = "receiptId", requiredLocked = false, requiredStatus = {1}, errorMessage = "仓单已锁定或状态不满足合并条件")
     @PostMapping("/merge/apply")
-    public Result<Long> applyMerge(@RequestBody ApplyMergeRequest request) {
+    public Result<Long> applyMerge(
+            @ApiParam(value = "合并申请信息", required = true) @RequestBody ApplyMergeRequest request) {
         try {
             // 仅从JWT获取用户信息，防止越权
             Long userId = CurrentUser.getUserId();
@@ -365,8 +378,8 @@ public class WarehouseReceiptController {
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可执行拆分合并")
     @PostMapping("/split-merge/{opLogId}/execute")
     public Result<Boolean> executeSplitMerge(
-            @PathVariable String opLogId,
-            @RequestParam Boolean execute) {
+            @ApiParam(value = "操作记录ID", required = true) @PathVariable String opLogId,
+            @ApiParam(value = "是否执行", required = true) @RequestParam Boolean execute) {
         try {
             Long id = parseId(opLogId, "操作记录ID");
             // 仅从JWT获取用户信息，防止越权
@@ -385,7 +398,8 @@ public class WarehouseReceiptController {
 
     @ApiOperation("查询拆分合并记录")
     @GetMapping("/split-merge/{opLogId}")
-    public Result<ReceiptOperationLog> getOperationLogById(@PathVariable String opLogId) {
+    public Result<ReceiptOperationLog> getOperationLogById(
+            @ApiParam(value = "操作记录ID", required = true) @PathVariable String opLogId) {
         try {
             Long id = parseId(opLogId, "操作记录ID");
             ReceiptOperationLog opLog = warehouseReceiptService.getOperationLogById(id);
@@ -402,8 +416,8 @@ public class WarehouseReceiptController {
     @WarehouseStatusCheck(paramName = "receiptId", requiredLocked = false, errorMessage = "仓单已锁定，无法重复质押")
     @PostMapping("/receipt/{receiptId}/lock")
     public Result<Boolean> lockReceipt(
-            @PathVariable String receiptId,
-            @RequestBody Map<String, Object> params) {
+            @ApiParam(value = "仓单ID", required = true) @PathVariable String receiptId,
+            @ApiParam(value = "贷款信息", required = true) @RequestBody Map<String, Object> params) {
         try {
             Long id = parseId(receiptId, "仓单ID");
             String loanId = params.get("loanId") != null ? params.get("loanId").toString() : null;
@@ -423,7 +437,8 @@ public class WarehouseReceiptController {
     @ApiOperation("还款解押仓单（金融机构操作）")
     @WarehousePermissionCheck(allowedRoles = {6}, errorMessage = "无权限操作：仅金融机构可进行还款解押")
     @PostMapping("/receipt/{receiptId}/unlock")
-    public Result<Boolean> unlockReceipt(@PathVariable String receiptId) {
+    public Result<Boolean> unlockReceipt(
+            @ApiParam(value = "仓单ID", required = true) @PathVariable String receiptId) {
         try {
             Long id = parseId(receiptId, "仓单ID");
             boolean success = warehouseReceiptService.unlockReceipt(id);
@@ -442,7 +457,8 @@ public class WarehouseReceiptController {
     @WarehouseReceiptOwnership(paramName = "receiptId", fromBody = true, errorMessage = "无权限操作：仅仓单持有人可申请核销出库")
     @WarehouseStatusCheck(paramName = "receiptId", requiredLocked = false, errorMessage = "仓单已锁定，无法申请核销出库")
     @PostMapping("/burn/apply")
-    public Result<Long> applyBurn(@RequestBody ApplyBurnRequest request) {
+    public Result<Long> applyBurn(
+            @ApiParam(value = "核销出库信息", required = true) @RequestBody ApplyBurnRequest request) {
         try {
             // 仅从JWT获取用户信息，防止越权
             Long userId = CurrentUser.getUserId();
@@ -466,7 +482,8 @@ public class WarehouseReceiptController {
     @ApiOperation("确认核销出库（仓储方操作）")
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可确认核销出库")
     @PostMapping("/burn/{stockOrderId}/confirm")
-    public Result<Boolean> confirmBurn(@PathVariable String stockOrderId) {
+    public Result<Boolean> confirmBurn(
+            @ApiParam(value = "入库单ID", required = true) @PathVariable String stockOrderId) {
         try {
             Long id = parseId(stockOrderId, "入库单ID");
             // 仅从JWT获取用户信息，防止越权
@@ -490,7 +507,8 @@ public class WarehouseReceiptController {
     @ApiOperation("创建仓库")
     @WarehousePermissionCheck(allowedRoles = {9}, errorMessage = "无权限操作：仅仓储方可创建仓库")
     @PostMapping("/warehouse/create")
-    public Result<Long> createWarehouse(@RequestBody CreateWarehouseRequest request) {
+    public Result<Long> createWarehouse(
+            @ApiParam(value = "仓库信息", required = true) @RequestBody CreateWarehouseRequest request) {
         try {
             // 参数校验
             if (request.getName() == null || request.getName().isEmpty()) {
@@ -537,7 +555,8 @@ public class WarehouseReceiptController {
     @ApiOperation("全路径溯源查询")
     @WarehouseReceiptOwnership(paramName = "receiptId", errorMessage = "无权限操作：非仓单相关方无权查询溯源信息")
     @GetMapping("/receipt/{receiptId}/trace")
-    public Result<TraceInfo> traceReceipt(@PathVariable String receiptId) {
+    public Result<TraceInfo> traceReceipt(
+            @ApiParam(value = "仓单ID", required = true) @PathVariable String receiptId) {
         try {
             Long id = parseId(receiptId, "仓单ID");
             TraceInfo traceInfo = warehouseReceiptService.traceReceipt(id);

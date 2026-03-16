@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -28,7 +27,6 @@ import java.util.Base64;
  * 简化版：完全依赖 SDK 自动加载机制
  */
 @Configuration
-@Profile("!test")
 public class BlockchainConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(BlockchainConfig.class);

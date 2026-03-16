@@ -1,0 +1,40 @@
+<settings>
+  <mirrors>
+    <!-- 中央仓库 -->
+    <mirror>
+      <id>aliyun</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </mirror>
+    <!-- Spring 仓库 -->
+    <mirror>
+      <id>aliyun-spring</id>
+      <mirrorOf>spring</mirrorOf>
+      <url>https://maven.aliyun.com/repository/spring</url>
+    </mirror>
+    <!-- Spring 插件仓库 -->
+    <mirror>
+      <id>aliyun-spring-plugin</id>
+      <mirrorOf>spring-plugin</mirrorOf>
+      <url>https://maven.aliyun.com/repository/spring-plugin</url>
+    </mirror>
+    <!-- Google 仓库 -->
+    <mirror>
+      <id>aliyun-google</id>
+      <mirrorOf>google</mirrorOf>
+      <url>https://maven.aliyun.com/repository/google</url>
+    </mirror>
+    <!-- Grails 仓库 -->
+    <mirror>
+      <id>aliyun-grails</id>
+      <mirrorOf>grails</mirrorOf>
+      <url>https://maven.aliyun.com/repository/grails</url>
+    </mirror>
+    <!-- Google 插件仓库 -->
+    <mirror>
+      <id>aliyun-google-plugin</id>
+      <mirrorOf>google-plugin</mirrorOf>
+      <url>https://maven.aliyun.com/repository/google-plugin</url>
+    </mirror>
+  </mirrors>
+</settings>

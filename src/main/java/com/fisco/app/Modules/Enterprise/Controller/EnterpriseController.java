@@ -69,7 +69,8 @@ public class EnterpriseController {
      */
     @ApiOperation("注册企业")
     @PostMapping("/register")
-    public Result<Map<String, Object>> registerEnterprise(@RequestBody EnterpriseRegisterRequest request) {
+    public Result<Map<String, Object>> registerEnterprise(
+            @ApiParam(value = "企业注册信息", required = true) @RequestBody EnterpriseRegisterRequest request) {
         try {
             // 参数校验
             if (request.getUsername() == null || request.getUsername().isEmpty()) {
@@ -278,7 +279,7 @@ public class EnterpriseController {
     public Result<Map<String, Object>> updateEnterpriseStatus(
             @ApiParam(value = "企业ID", required = true)
             @PathVariable Long entId,
-            @ApiParam(value = "状态 0:待审核 1:正常 2:冻结 3:注销中 4:已注销", required = true)
+            @ApiParam(value = "状态更新信息", required = true)
             @RequestBody StatusRequest request) {
         try {
             if (entId == null) {
@@ -329,7 +330,7 @@ public class EnterpriseController {
     public Result<Map<String, Object>> auditEnterprise(
             @ApiParam(value = "企业ID", required = true)
             @PathVariable Long entId,
-            @ApiParam(value = "审核结果: true-通过(设为正常), false-拒绝(设为冻结)", required = true)
+            @ApiParam(value = "审核信息", required = true)
             @RequestBody AuditRequest request) {
         try {
             if (entId == null) {
@@ -403,7 +404,7 @@ public class EnterpriseController {
     public Result<Map<String, Object>> updateCreditRating(
             @ApiParam(value = "企业ID", required = true)
             @PathVariable Long entId,
-            @ApiParam(value = "信用评级", required = true)
+            @ApiParam(value = "信用评级信息", required = true)
             @RequestBody RatingRequest request) {
         try {
             if (entId == null) {
@@ -438,7 +439,7 @@ public class EnterpriseController {
     public Result<Map<String, Object>> setCreditLimit(
             @ApiParam(value = "企业ID", required = true)
             @PathVariable Long entId,
-            @ApiParam(value = "授信额度", required = true)
+            @ApiParam(value = "授信额度信息", required = true)
             @RequestBody CreditLimitRequest request) {
         try {
             if (entId == null) {
@@ -471,7 +472,8 @@ public class EnterpriseController {
      */
     @ApiOperation("企业登录")
     @PostMapping("/login")
-    public Result<Map<String, Object>> login(@RequestBody LoginRequest request) {
+    public Result<Map<String, Object>> login(
+            @ApiParam(value = "登录信息", required = true) @RequestBody LoginRequest request) {
         try {
             if (request.getUsername() == null || request.getUsername().isEmpty()) {
                 return Result.error(400, "用户名不能为空");
@@ -490,7 +492,8 @@ public class EnterpriseController {
                     enterprise.getEntId(),
                     enterprise.getEntId(),
                     "ENTERPRISE",
-                    null
+                    null,
+                    enterprise.getEntRole()
             );
 
             Map<String, Object> result = new HashMap<>();
@@ -520,7 +523,8 @@ public class EnterpriseController {
      */
     @ApiOperation("系统管理员登录")
     @PostMapping("/admin/login")
-    public Result<Map<String, Object>> adminLogin(@RequestBody LoginRequest request) {
+    public Result<Map<String, Object>> adminLogin(
+            @ApiParam(value = "登录信息", required = true) @RequestBody LoginRequest request) {
         try {
             if (request.getUsername() == null || request.getUsername().isEmpty()) {
                 return Result.error(400, "用户名不能为空");
@@ -570,7 +574,7 @@ public class EnterpriseController {
     @ApiOperation("修改登录密码")
     @PutMapping("/password/login")
     public Result<Void> updateLoginPassword(
-            @RequestBody PasswordUpdateRequest request) {
+            @ApiParam(value = "密码更新信息", required = true) @RequestBody PasswordUpdateRequest request) {
         try {
             if (request.getEntId() == null) {
                 return Result.error(400, "企业ID不能为空");
@@ -609,7 +613,7 @@ public class EnterpriseController {
     @ApiOperation("重置交易密码")
     @PutMapping("/password/pay")
     public Result<Void> updatePayPassword(
-            @RequestBody PasswordUpdateRequest request) {
+            @ApiParam(value = "交易密码重置信息", required = true) @RequestBody PasswordUpdateRequest request) {
         try {
             if (request.getEntId() == null) {
                 return Result.error(400, "企业ID不能为空");
@@ -871,10 +875,8 @@ public class EnterpriseController {
     @RequireRole(value = {"ADMIN"}, adminBypass = true)
     @PostMapping("/{entId}/cancellation/audit")
     public Result<Void> auditCancellation(
-            @ApiParam(value = "企业ID", required = true)
-            @PathVariable Long entId,
-            @ApiParam(value = "审核结果: true-通过(设为已注销), false-拒绝(恢复正常)", required = true)
-            @RequestBody AuditRequest request) {
+            @ApiParam(value = "企业ID", required = true) @PathVariable Long entId,
+            @ApiParam(value = "审核结果", required = true) @RequestBody AuditRequest request) {
         try {
             if (entId == null) {
                 return Result.error(400, "企业ID不能为空");
@@ -1002,11 +1004,9 @@ public class EnterpriseController {
     @ApiOperation("管理企业用户")
     @PutMapping("/users/{userId}")
     public Result<Void> manageUser(
-            @ApiParam(value = "企业ID", required = true)
-            @RequestParam Long entId,
-            @ApiParam(value = "用户ID", required = true)
-            @PathVariable Long userId,
-            @RequestBody ManageUserRequest request) {
+            @ApiParam(value = "企业ID", required = true) @RequestParam Long entId,
+            @ApiParam(value = "用户ID", required = true) @PathVariable Long userId,
+            @ApiParam(value = "用户管理信息", required = true) @RequestBody ManageUserRequest request) {
         try {
             if (entId == null) {
                 return Result.error(400, "企业ID不能为空");

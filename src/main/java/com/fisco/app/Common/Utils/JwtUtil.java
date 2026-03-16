@@ -83,6 +83,10 @@ public class JwtUtil {
     public static final String CLAIM_ROLE = "role";
     public static final String CLAIM_SCOPE = "scope";
     /**
+     * 企业角色（整数类型），用于WarehouseABACInterceptor等需要整数角色的场景
+     */
+    public static final String CLAIM_ENT_ROLE = "entRole";
+    /**
      * Token类型标识：access 或 refresh
      */
     public static final String CLAIM_TOKEN_TYPE = "tokenType";
@@ -126,7 +130,18 @@ public class JwtUtil {
         if (jwtSecret == null || jwtSecret.trim().isEmpty()) {
             jwtSecret = "FiscoBcos_Platform_Secret_Key_2026";
         }
-        JwtConfigHolder.init(jwtSecret, accessExpiration, refreshExpiration);
+        init(jwtSecret, accessExpiration, refreshExpiration);
+    }
+
+    /**
+     * 静态初始化方法 - 供测试代码调用
+     *
+     * @param secret JWT签名密钥
+     * @param accessExpiration Access Token过期时间（毫秒）
+     * @param refreshExpiration Refresh Token过期时间（毫秒）
+     */
+    public static void init(String secret, long accessExpiration, long refreshExpiration) {
+        JwtConfigHolder.init(secret, accessExpiration, refreshExpiration);
         ACCESS_TOKEN_EXPIRATION = accessExpiration;
         REFRESH_TOKEN_EXPIRATION = refreshExpiration;
     }
@@ -143,6 +158,20 @@ public class JwtUtil {
      * @return 包含accessToken和refreshToken的Map
      */
     public static Map<String, String> createTokenPair(Long sub, Long entId, String role, Integer scope) {
+        return createTokenPair(sub, entId, role, scope, null);
+    }
+
+    /**
+     * 生成双令牌对（支持企业角色）
+     *
+     * @param sub     用户ID
+     * @param entId  企业ID
+     * @param role   角色（字符串）
+     * @param scope  权限范围
+     * @param entRole 企业角色（整数类型），用于权限校验
+     * @return 令牌对Map
+     */
+    public static Map<String, String> createTokenPair(Long sub, Long entId, String role, Integer scope, Integer entRole) {
         Map<String, String> tokenPair = new HashMap<>();
 
         // 生成唯一标识符（JTI）
@@ -155,6 +184,10 @@ public class JwtUtil {
         accessClaims.put(CLAIM_SCOPE, scope);
         accessClaims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS);
         accessClaims.put(CLAIM_JTI, jti);
+        // 添加企业角色（整数类型）
+        if (entRole != null) {
+            accessClaims.put(CLAIM_ENT_ROLE, entRole);
+        }
 
         String accessToken = Jwts.builder()
                 .claims(accessClaims)
@@ -171,6 +204,10 @@ public class JwtUtil {
         refreshClaims.put(CLAIM_SCOPE, scope);
         refreshClaims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_REFRESH);
         refreshClaims.put(CLAIM_JTI, jti);
+        // 添加企业角色（整数类型）
+        if (entRole != null) {
+            refreshClaims.put(CLAIM_ENT_ROLE, entRole);
+        }
 
         String refreshToken = Jwts.builder()
                 .claims(refreshClaims)
@@ -182,6 +219,7 @@ public class JwtUtil {
 
         tokenPair.put("accessToken", accessToken);
         tokenPair.put("refreshToken", refreshToken);
+        tokenPair.put("expiresIn", String.valueOf(JwtConfigHolder.ACCESS_TOKEN_EXPIRATION / 1000)); // 秒
 
         log.info("生成双令牌成功，用户ID: {}, JTI: {}", sub, jti);
         return tokenPair;
@@ -197,6 +235,20 @@ public class JwtUtil {
      * @return Access Token字符串
      */
     public static String createAccessToken(Long sub, Long entId, String role, Integer scope) {
+        return createAccessToken(sub, entId, role, scope, null);
+    }
+
+    /**
+     * 生成单个 Access Token（短期，支持企业角色）
+     *
+     * @param sub     用户ID
+     * @param entId   企业ID
+     * @param role    角色
+     * @param scope   权限范围
+     * @param entRole 企业角色（整数）
+     * @return Access Token字符串
+     */
+    public static String createAccessToken(Long sub, Long entId, String role, Integer scope, Integer entRole) {
         String jti = UUID.randomUUID().toString();
 
         Map<String, Object> claims = new HashMap<>();
@@ -205,6 +257,9 @@ public class JwtUtil {
         claims.put(CLAIM_SCOPE, scope);
         claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS);
         claims.put(CLAIM_JTI, jti);
+        if (entRole != null) {
+            claims.put(CLAIM_ENT_ROLE, entRole);
+        }
 
         return Jwts.builder()
                 .claims(claims)
@@ -225,6 +280,20 @@ public class JwtUtil {
      * @return Refresh Token字符串
      */
     public static String createRefreshToken(Long sub, Long entId, String role, Integer scope) {
+        return createRefreshToken(sub, entId, role, scope, null);
+    }
+
+    /**
+     * 生成单个 Refresh Token（长期，支持企业角色）
+     *
+     * @param sub     用户ID
+     * @param entId   企业ID
+     * @param role    角色
+     * @param scope   权限范围
+     * @param entRole 企业角色（整数）
+     * @return Refresh Token字符串
+     */
+    public static String createRefreshToken(Long sub, Long entId, String role, Integer scope, Integer entRole) {
         String jti = UUID.randomUUID().toString();
 
         Map<String, Object> claims = new HashMap<>();
@@ -233,6 +302,9 @@ public class JwtUtil {
         claims.put(CLAIM_SCOPE, scope);
         claims.put(CLAIM_TOKEN_TYPE, TOKEN_TYPE_REFRESH);
         claims.put(CLAIM_JTI, jti);
+        if (entRole != null) {
+            claims.put(CLAIM_ENT_ROLE, entRole);
+        }
 
         return Jwts.builder()
                 .claims(claims)
@@ -362,6 +434,16 @@ public class JwtUtil {
      */
     public static Integer getScope(Claims claims) {
         return claims.get(CLAIM_SCOPE, Integer.class);
+    }
+
+    /**
+     * 获取企业角色（整数类型）
+     *
+     * @param claims Token的Claims
+     * @return 企业角色（整数），如果没有返回null
+     */
+    public static Integer getEntRole(Claims claims) {
+        return claims.get(CLAIM_ENT_ROLE, Integer.class);
     }
 
     /**

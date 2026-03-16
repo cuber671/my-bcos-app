@@ -101,19 +101,19 @@ public class LogisticsServiceImpl implements LogisticsService {
         logger.info("创建物流委派单成功: voucherNo={}, ownerEntId={}, businessScene={}",
             voucherNo, delegate.getOwnerEntId(), delegate.getBusinessSceneDesc());
 
-        // 区块链上链（失败则抛出异常回滚本地事务）
+        // 区块链上链（失败不影响本地业务）
         try {
             var receipt = logisticsContractService.createLogisticsDelegateCore(voucherNo);
-            if (receipt != null && receipt.getTransactionHash() != null) {
+            if (receipt != null && receipt.isStatusOK() && receipt.getTransactionHash() != null) {
                 delegate.setChainTxHash(receipt.getTransactionHash());
                 delegateMapper.updateById(delegate);
                 logger.info("物流委派单上链成功: voucherNo={}, txHash={}", voucherNo, receipt.getTransactionHash());
             } else {
-                throw new RuntimeException("区块链交易回执无效");
+                logger.warn("物流委派单上链失败，状态码: {}, voucherNo={}",
+                    receipt != null ? receipt.getStatus() : "null", voucherNo);
             }
-        } catch (RuntimeException e) {
-            logger.error("物流委派单上链失败: voucherNo={}, error={}", voucherNo, e.getMessage());
-            throw e;
+        } catch (Exception e) {
+            logger.warn("物流委派单上链异常，不影响本地业务: voucherNo={}, error={}", voucherNo, e.getMessage());
         }
 
         return delegate;
