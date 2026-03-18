@@ -55,6 +55,48 @@ contract LogisticsCore {
         return true;
     }
 
+    // 提货确认 (状态: 2->3)
+    function pickup(string calldata voucherNo, uint256 quantity) external returns (bool success) {
+        require(voucherNoExists[voucherNo], "Voucher not found");
+        require(voucherStatus[voucherNo] == 2, "Invalid status for pickup");
+        voucherStatus[voucherNo] = 3; // InTransit
+        emit StatusUpdated(voucherNo, 2, 3, msg.sender, block.timestamp);
+        return true;
+    }
+
+    // 到达确认 (状态: 3->4)
+    function arrive(string calldata voucherNo) external returns (bool success) {
+        require(voucherNoExists[voucherNo], "Voucher not found");
+        require(voucherStatus[voucherNo] == 3, "Invalid status for arrive");
+        voucherStatus[voucherNo] = 4; // Delivered
+        emit StatusUpdated(voucherNo, 3, 4, msg.sender, block.timestamp);
+        return true;
+    }
+
+    // 确认交付 (状态: 4->5)
+    function confirmDelivery(string calldata voucherNo) external returns (bool success) {
+        require(voucherNoExists[voucherNo], "Voucher not found");
+        require(voucherStatus[voucherNo] == 4, "Invalid status for confirm");
+        voucherStatus[voucherNo] = 5; // Completed
+        emit StatusUpdated(voucherNo, 4, 5, msg.sender, block.timestamp);
+        return true;
+    }
+
+    // 失效物流单
+    function invalidate(string calldata voucherNo) external returns (bool success) {
+        require(voucherNoExists[voucherNo], "Voucher not found");
+        require(voucherStatus[voucherNo] != 5 && voucherStatus[voucherNo] != 0, "Cannot invalidate");
+        voucherStatus[voucherNo] = 6; // Invalid
+        emit StatusUpdated(voucherNo, voucherStatus[voucherNo], 6, msg.sender, block.timestamp);
+        return true;
+    }
+
+    // 获取货主哈希（用于权限校验）
+    function getOwnerHash(string calldata voucherNo) external view returns (bytes32) {
+        require(voucherNoExists[voucherNo], "Voucher not found");
+        return bytes32(uint256(uint160(msg.sender)));
+    }
+
     function getStatus(string calldata voucherNo) external view returns (uint8) {
         return voucherStatus[voucherNo];
     }

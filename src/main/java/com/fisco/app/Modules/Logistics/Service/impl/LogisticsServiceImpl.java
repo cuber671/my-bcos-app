@@ -307,7 +307,7 @@ public class LogisticsServiceImpl implements LogisticsService {
         try {
             // 将司机信息和二维码哈希打包上链
             String driverInfo = driverId + "|" + driverName + "|" + vehicleNo + "|" + qrCodeHash;
-            byte[] driverInfoHash = driverInfo.getBytes();
+            byte[] driverInfoHash = calculateQrCodeHashBytes(driverInfo);
 
             var receipt = logisticsContractService.assignCarrier(voucherNo, driverInfoHash);
             if (receipt != null && receipt.getTransactionHash() != null) {
@@ -805,6 +805,19 @@ public class LogisticsServiceImpl implements LogisticsService {
         } catch (Exception e) {
             logger.error("计算二维码哈希失败", e);
             return "";
+        }
+    }
+
+    /**
+     * 计算字节数组类型的哈希（用于智能合约 bytes32 参数）
+     */
+    private byte[] calculateQrCodeHashBytes(String data) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            return digest.digest(data.getBytes());
+        } catch (Exception e) {
+            logger.error("计算字节数组哈希失败", e);
+            return new byte[32];
         }
     }
 

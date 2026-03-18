@@ -353,24 +353,44 @@ public class EnterpriseController {
             int newStatus = request.getApproved() ? 1 : 2;
             String action = request.getApproved() ? "通过" : "拒绝";
 
-            // 更新数据库状态
-            boolean dbSuccess = enterpriseService.updateEnterpriseStatus(entId, newStatus);
-
             // 链上操作
             String txHash = null;
+            String chainStatus = "pending";
             try {
                 if (request.getApproved()) {
                     // 审核通过：先注册上链，再更新状态
                     txHash = enterpriseService.registerEnterpriseOnChain(entId);
                     if (txHash != null) {
                         txHash = enterpriseService.updateEnterpriseStatusOnChain(entId, newStatus);
+                        chainStatus = "success";
+                    } else {
+                        chainStatus = "failed";
                     }
                 } else {
-                    // 审核拒绝：直接更新状态
-                    txHash = enterpriseService.updateEnterpriseStatusOnChain(entId, newStatus);
+                    // 审核拒绝：只有已上链的企业才需要更新链上状态
+                    Enterprise ent = enterpriseService.getEnterpriseById(entId);
+                    if (ent != null && ent.getBlockchainAddress() != null) {
+                        // 企业已上链，需要更新链上状态
+                        txHash = enterpriseService.updateEnterpriseStatusOnChain(entId, newStatus);
+                        chainStatus = txHash != null ? "success" : "skipped";
+                    } else {
+                        // 企业未上链，跳过链上操作
+                        chainStatus = "skipped";
+                    }
                 }
             } catch (Exception e) {
-                logger.warn("链上操作失败，将仅更新数据库: entId={}", entId, e);
+                logger.error("链上操作失败: entId={}, error={}", entId, e.getMessage());
+                chainStatus = "failed";
+            }
+
+            // 只有链上操作成功时才更新数据库状态
+            boolean dbSuccess = false;
+            if ("success".equals(chainStatus) || "skipped".equals(chainStatus)) {
+                dbSuccess = enterpriseService.updateEnterpriseStatus(entId, newStatus);
+            } else if (request.getApproved()) {
+                // 审核通过但链上注册失败，回滚保持待审核状态
+                logger.warn("企业上链失败，审核操作未完成: entId={}", entId);
+                return Result.error(500, "企业上链失败，审核操作未完成，请重试");
             }
 
             Map<String, Object> result = new HashMap<>();
@@ -379,6 +399,7 @@ public class EnterpriseController {
             result.put("action", action);
             result.put("newStatus", newStatus);
             result.put("dbStatus", dbSuccess ? "success" : "failed");
+            result.put("chainStatus", chainStatus);
             result.put("chainTxHash", txHash);
 
             if (dbSuccess) {

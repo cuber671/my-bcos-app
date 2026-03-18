@@ -168,20 +168,22 @@ public class ReceivableContractService extends BaseContractService {
             throw new IllegalArgumentException("到期日期不能为空");
         }
 
-        // 构建输入参数
+        // 构建输入参数 - 直接传递参数，与 WarehouseReceiptContractService 保持一致
         ReceivableInput input = new ReceivableInput(
-                new org.fisco.bcos.sdk.v3.codec.datatypes.Utf8String(receivableId),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Uint256(initialAmount),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Uint256(dueDate),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Bytes32(buyerSellerPairHash != null ? buyerSellerPairHash : new byte[32]),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Bytes32(invoiceHash != null ? invoiceHash : new byte[32]),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Bytes32(contractHash != null ? contractHash : new byte[32]),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Bytes32(goodsDetailHash != null ? goodsDetailHash : new byte[32]),
-                new org.fisco.bcos.sdk.v3.codec.datatypes.generated.Uint8(businessScene != null ? businessScene : BigInteger.ONE)
+                receivableId,
+                initialAmount,
+                dueDate,
+                buyerSellerPairHash != null ? buyerSellerPairHash : new byte[32],
+                invoiceHash != null ? invoiceHash : new byte[32],
+                contractHash != null ? contractHash : new byte[32],
+                goodsDetailHash != null ? goodsDetailHash : new byte[32],
+                businessScene != null ? businessScene : BigInteger.ONE
         );
 
-        logger.info("创建应收款上链: receivableId={}, initialAmount={}, businessScene={}",
-                receivableId, initialAmount, businessScene);
+        logger.info("创建应收款上链: receivableId={}, initialAmount={}, dueDate={}, buyerSellerPairHash={}, businessScene={}",
+                receivableId, initialAmount, dueDate,
+                buyerSellerPairHash != null ? javax.xml.bind.DatatypeConverter.printHexBinary(buyerSellerPairHash) : "null",
+                businessScene);
 
         TransactionResponse response = sendTransactionWithAudit(
                 receivableCoreContract,

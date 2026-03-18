@@ -304,14 +304,15 @@ public class WarehouseReceiptContractService extends BaseContractService {
             byte[] fromHash,
             byte[] toHash) {
 
-        checkOpsContract();
+        checkCoreContract();
 
-        logger.info("确认仓单背书: receiptId={}", receiptId);
+        logger.info("确认仓单背书: receiptId={}, toHash={}", receiptId, toHash);
 
+        // 使用 transferReceipt 方法，由 admin(javaBackend) 授权转让
         TransactionResponse response = sendTransactionWithAudit(
-                warehouseOpsContract,
-                "confirmEndorsement",
-                new Object[]{receiptId, fromHash, toHash},
+                warehouseCoreContract,
+                "transferReceipt",
+                new Object[]{receiptId, toHash != null ? toHash : new byte[32]},
                 "WAREHOUSE_CONFIRM_ENDORSEMENT"
         );
 

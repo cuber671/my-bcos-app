@@ -80,7 +80,17 @@
       "Bash(mv contracts_credit_CreditLimitScore_sol_CreditLimitScore.bin CreditLimitScore.bin)",
       "Read(//home/llm_rca/fisco-my-bcos-app/tasks/**)",
       "Bash(__NEW_LINE_f22266996584b56f__ echo:*)",
-      "Bash(ADMIN_TOKEN=\"eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiQURNSU4iLCJlbnRJZCI6MCwic2NvcGUiOjEsInRva2VuVHlwZSI6ImFjY2VzcyIsImp0aSI6IjFiNzU2NDQyLTg2OGQtNDJmOC1hNGM1LWNiNDQyNjRjYTVlOCIsInN1YiI6IjAiLCJpYXQiOjE3NzMxNDU4OTcsImV4cCI6MTc3MzE1MzA5N30.vPjLRuFqcM6rcmSsrEiTQXxnnbfkLewETfmAIT_RCmFlPN06yUJXqQdHMM9fICnhFxYD0QNHvO4nacR5qR5vHA\" __NEW_LINE_0fb3969bf2fcd7fc__ echo \"=== E01: 企业注册 ===\" curl -s -X POST http://localhost:8080/api/v1/enterprise/register -H \"Content-Type: application/json\" -d '{\"\"\"\"username\"\"\"\":\"\"\"\"testcompany1\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"pass123\"\"\"\",\"\"\"\"payPassword\"\"\"\":\"\"\"\"pay123\"\"\"\",\"\"\"\"enterpriseName\"\"\"\":\"\"\"\"测试企业A\"\"\"\",\"\"\"\"orgCode\"\"\"\":\"\"\"\"91110000MA00000001\"\"\"\",\"\"\"\"entRole\"\"\"\":1}')"
+      "Bash(ADMIN_TOKEN=\"eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiQURNSU4iLCJlbnRJZCI6MCwic2NvcGUiOjEsInRva2VuVHlwZSI6ImFjY2VzcyIsImp0aSI6IjFiNzU2NDQyLTg2OGQtNDJmOC1hNGM1LWNiNDQyNjRjYTVlOCIsInN1YiI6IjAiLCJpYXQiOjE3NzMxNDU4OTcsImV4cCI6MTc3MzE1MzA5N30.vPjLRuFqcM6rcmSsrEiTQXxnnbfkLewETfmAIT_RCmFlPN06yUJXqQdHMM9fICnhFxYD0QNHvO4nacR5qR5vHA\" __NEW_LINE_0fb3969bf2fcd7fc__ echo \"=== E01: 企业注册 ===\" curl -s -X POST http://localhost:8080/api/v1/enterprise/register -H \"Content-Type: application/json\" -d '{\"\"\"\"username\"\"\"\":\"\"\"\"testcompany1\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"pass123\"\"\"\",\"\"\"\"payPassword\"\"\"\":\"\"\"\"pay123\"\"\"\",\"\"\"\"enterpriseName\"\"\"\":\"\"\"\"测试企业A\"\"\"\",\"\"\"\"orgCode\"\"\"\":\"\"\"\"91110000MA00000001\"\"\"\",\"\"\"\"entRole\"\"\"\":1}')",
+      "Bash(WH_TOKEN=\"eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRU5URVJQUklTRSIsImVudElkIjoyMDMzMTExOTE4NTYwMjE1MDQyLCJlbnRSb2xlIjo5LCJ0b2tlblR5cGUiOiJhY2Nlc3MiLCJqdGkiOiIyYjBmY2Y1Yi0yNGJiLTRjZjQtYjQ2Zi1iYTVmYWFiMjE2NDgiLCJzdWIiOiIyMDMzMTExOTE4NTYwMjE1MDQyIiwiaWF0IjoxNzczNjY1MjA0LCJleHAiOjE3NzM2NzI0MDR9.p7nUh1yrtTWGxkp18PZMUQyyWAcirx5m7nrt7lHek9HuaW7MFbTBJ7sY7h20UxU7Sqy6_7eKWTxFc5ZlF4g8Mw\")",
+      "Bash(__NEW_LINE_b9cea7a071327359__ echo:*)",
+      "Bash(docker exec:*)",
+      "Bash(do echo:*)",
+      "Bash(/dev/null __NEW_LINE_34a75f709b5126f3__ echo '=== 验证列已添加 ===' docker exec fisco-dev-db mysql -h127.0.0.1 -uroot -proot_pwd -e \"DESCRIBE fisco_data.t_logistics_delegate;\")",
+      "Bash(__NEW_LINE_fddf4502352f0d5d__ echo:*)",
+      "Bash(__NEW_LINE_1e865f2bc83c242c__ curl -s -X POST http://localhost:8080/api/v1/user/register -H \"Content-Type: application/json\" -d '{:*)",
+      "Read(//dev/**)",
+      "Bash(/dev/null __NEW_LINE_fabc0a7dc5952cab__ echo '=== 验证 ===' docker exec fisco-dev-db mysql -h127.0.0.1 -uroot -proot_pwd -e \"DESCRIBE fisco_data.t_warehouse_receipt;\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); func=[f for f in data if f.get\\(''''name''''\\)==''''createReceivable'''']; print\\(json.dumps\\(func[0], indent=2\\) if func else ''''not found''''\\)\")"
     ],
     "additionalDirectories": [
       "/home/llm_rca/fisco/my-bcos-app/tasks",

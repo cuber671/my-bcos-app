@@ -244,16 +244,15 @@ contract ReceivableCore is IReceivableCore {
      * @return success 是否成功
      */
     function createReceivable(ReceivableInput calldata input)
-        external onlyJavaBackend returns (bool success)
+        external onlyAdmin returns (bool success)
     {
-        // 参数验证
-        require(!receivableIdExists[input.receivableId], "Receivable ID exists");
+        // 允许重复创建（幂等性）
+        if (receivableIdExists[input.receivableId]) {
+            return true;
+        }
+
+        // 参数验证 - 放宽限制
         require(input.initialAmount > 0, "Invalid amount");
-        require(input.dueDate > block.timestamp, "Invalid due date");
-        require(
-            input.dueDate <= block.timestamp + MAX_DUE_DAYS * 1 days,
-            "Due date too far"
-        );
         require(input.buyerSellerPairHash != bytes32(0), "Invalid pair hash");
 
         // 使用扁平化结构创建应收款

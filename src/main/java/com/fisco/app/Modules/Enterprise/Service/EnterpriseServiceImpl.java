@@ -626,7 +626,7 @@ public class EnterpriseServiceImpl implements EnterpriseService {
             org.fisco.bcos.sdk.v3.model.TransactionReceipt receipt = enterpriseContractService.registerEnterprise(
                     enterprise.getBlockchainAddress(),
                     enterprise.getOrgCode(),
-                    BigInteger.valueOf(enterprise.getEntRole()),
+                    mapToContractRole(enterprise.getEntRole()),
                     java.security.MessageDigest.getInstance("SHA-256").digest(enterprise.getOrgCode().getBytes())
             );
             if (receipt.isStatusOK()) {
@@ -642,6 +642,23 @@ public class EnterpriseServiceImpl implements EnterpriseService {
         }
     }
 
+    /**
+     * 将Java应用角色映射为智能合约角色值
+     * Java角色: 1=核心企业, 3=供应商, 6=金融机构, 9=仓储方
+     * 合约角色: 1=核心企业, 0=供应商, 2=金融机构, 4=仓储方
+     */
+    private BigInteger mapToContractRole(Integer entRole) {
+        if (entRole == null) {
+            return BigInteger.valueOf(1);
+        }
+        switch (entRole) {
+            case 1: return BigInteger.valueOf(1);  // 核心企业
+            case 3: return BigInteger.valueOf(0);  // 供应商
+            case 6: return BigInteger.valueOf(2);  // 金融机构
+            case 9: return BigInteger.valueOf(4);  // 仓储方
+            default: return BigInteger.valueOf(1); // 默认核心企业
+        }
+    }
 
     @Override
     public String updateEnterpriseStatusOnChain(Long entId, Integer status) {

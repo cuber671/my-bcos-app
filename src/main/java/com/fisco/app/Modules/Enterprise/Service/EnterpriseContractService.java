@@ -314,7 +314,7 @@ public class EnterpriseContractService extends BaseContractService {
         TransactionResponse response = sendTransactionWithAudit(
                 enterpriseContract,
                 "updateCreditRating",
-                new Object[]{enterpriseAddress, newRating},
+                new Object[]{enterpriseAddress, newRating, "信用评级更新"},
                 "ENTERPRISE_UPDATE_RATING"
         );
 

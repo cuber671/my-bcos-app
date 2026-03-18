@@ -308,6 +308,11 @@ public class WarehouseReceiptServiceImpl implements WarehouseReceiptService {
             throw new RuntimeException("入库单不存在或未确认");
         }
 
+        // 如果未提供onChainId，自动生成
+        if (onChainId == null || onChainId.isBlank()) {
+            onChainId = "WR" + System.currentTimeMillis();
+        }
+
         // 2. 调用区块链签发仓单
         try {
             // 生成各字段哈希
@@ -410,6 +415,10 @@ public class WarehouseReceiptServiceImpl implements WarehouseReceiptService {
     public Long launchEndorsement(Long receiptId, Long transferorUserId, Long transfereeEntId,
             String signatureHash) {
         // 1. 验证仓单状态
+        if (transfereeEntId == null) {
+            throw new RuntimeException("受让方企业ID不能为空");
+        }
+
         WarehouseReceipt receipt = warehouseReceiptMapper.selectById(receiptId);
         if (receipt == null) {
             throw new RuntimeException("仓单不存在");

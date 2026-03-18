@@ -173,6 +173,13 @@ FISCO_ENABLED=true
 - FISCO nodes require P2P configuration in `fisco/nodes/127.0.0.1/node*/nodes.json` for consensus
 - Test documentation: see `测试计划.md` for 113 API testing scope
 - API documentation: see `docs/` directory for module-specific APIs
+- Testing standards: see `测试流程标准.md` for test engineer workflow
+- Program repair: see `程序修复规范.md` for bugfix guidelines
+
+## API Documentation
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 
 ## Testing Standards
 

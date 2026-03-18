@@ -1,9 +1,13 @@
 package com.fisco.app.Modules.Logistics.Service;
 
 import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.fisco.bcos.sdk.v3.contract.Contract;
+import org.fisco.bcos.sdk.v3.codec.datatypes.generated.Uint256;
+import org.fisco.bcos.sdk.v3.codec.datatypes.Utf8String;
 import org.fisco.bcos.sdk.v3.model.TransactionReceipt;
 import org.fisco.bcos.sdk.v3.transaction.model.dto.TransactionResponse;
 import org.fisco.bcos.sdk.v3.transaction.model.exception.ContractException;
@@ -15,6 +19,8 @@ import org.springframework.stereotype.Service;
 import com.fisco.app.Common.Service.BaseContractService;
 import com.fisco.app.contract.logistics.LogisticsCore;
 import com.fisco.app.contract.logistics.LogisticsOps;
+
+import org.fisco.bcos.sdk.v3.codec.datatypes.Function;
 
 import javax.annotation.PostConstruct;
 
@@ -207,18 +213,18 @@ public class LogisticsContractService extends BaseContractService {
      * 提货确认
      */
     public TransactionReceipt pickup(String voucherNo, BigInteger quantity) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上提货确认: voucherNo={}, quantity={}", voucherNo, quantity);
 
-        TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+        // 使用动态 Function 调用
+        Function function = new Function(
                 "pickup",
-                new Object[]{voucherNo, quantity},
-                "LOGISTICS_PICKUP"
-        );
+                Arrays.asList(new Utf8String(voucherNo), new Uint256(quantity)),
+                Collections.emptyList());
 
-        TransactionReceipt receipt = response != null ? response.getTransactionReceipt() : null;
+        TransactionReceipt receipt = executeTransaction(logisticsCore, function);
+
         if (!isTransactionSuccess(receipt)) {
             String errorMsg = getTransactionErrorMessage(receipt);
             logger.error("链上提货确认失败: {}", errorMsg);
@@ -234,13 +240,13 @@ public class LogisticsContractService extends BaseContractService {
      * 到货并增加数量
      */
     public TransactionReceipt arriveAndAddQuantity(String voucherNo, String targetReceiptId, BigInteger quantity) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上到货增加数量: voucherNo={}, targetReceiptId={}, quantity={}",
                 voucherNo, targetReceiptId, quantity);
 
         TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+                logisticsCore,
                 "arriveAndAddQuantity",
                 new Object[]{voucherNo, targetReceiptId, quantity},
                 "LOGISTICS_ARRIVE_ADD"
@@ -268,13 +274,13 @@ public class LogisticsContractService extends BaseContractService {
             String unit,
             byte[] ownerHash,
             byte[] warehouseHash) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上到货创建仓单: voucherNo={}, newReceiptId={}, weight={}",
                 voucherNo, newReceiptId, weight);
 
         TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+                logisticsCore,
                 "arriveAndCreateReceipt",
                 new Object[]{voucherNo, newReceiptId, weight, unit, ownerHash, warehouseHash},
                 "LOGISTICS_ARRIVE_CREATE"
@@ -296,12 +302,12 @@ public class LogisticsContractService extends BaseContractService {
      * 分配承运人
      */
     public TransactionReceipt assignCarrier(String voucherNo, byte[] carrierHash) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上分配承运人: voucherNo={}", voucherNo);
 
         TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+                logisticsCore,
                 "assignCarrier",
                 new Object[]{voucherNo, carrierHash},
                 "LOGISTICS_ASSIGN"
@@ -323,18 +329,18 @@ public class LogisticsContractService extends BaseContractService {
      * 确认交付
      */
     public TransactionReceipt confirmDelivery(String voucherNo, int action, String targetReceiptId) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上确认交付: voucherNo={}, action={}", voucherNo, action);
 
-        TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+        // 使用动态 Function 调用
+        Function function = new Function(
                 "confirmDelivery",
-                new Object[]{voucherNo, BigInteger.valueOf(action), targetReceiptId},
-                "LOGISTICS_CONFIRM"
-        );
+                Arrays.asList(new Utf8String(voucherNo)),
+                Collections.emptyList());
 
-        TransactionReceipt receipt = response != null ? response.getTransactionReceipt() : null;
+        TransactionReceipt receipt = executeTransaction(logisticsCore, function);
+
         if (!isTransactionSuccess(receipt)) {
             String errorMsg = getTransactionErrorMessage(receipt);
             logger.error("链上确认交付失败: {}", errorMsg);
@@ -350,12 +356,12 @@ public class LogisticsContractService extends BaseContractService {
      * 更新状态
      */
     public TransactionReceipt updateStatus(String voucherNo, int newStatus) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上更新状态: voucherNo={}, status={}", voucherNo, newStatus);
 
         TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+                logisticsCore,
                 "updateStatus",
                 new Object[]{voucherNo, BigInteger.valueOf(newStatus)},
                 "LOGISTICS_UPDATE_STATUS"
@@ -420,18 +426,18 @@ public class LogisticsContractService extends BaseContractService {
      * 使委派单失效
      */
     public TransactionReceipt invalidate(String voucherNo) {
-        checkOpsContract();
+        checkCoreContract();
 
         logger.info("链上使委派单失效: voucherNo={}", voucherNo);
 
-        TransactionResponse response = sendTransactionWithAudit(
-                logisticsOps,
+        // 使用动态 Function 调用
+        Function function = new Function(
                 "invalidate",
-                new Object[]{voucherNo},
-                "LOGISTICS_INVALIDATE"
-        );
+                Arrays.asList(new Utf8String(voucherNo)),
+                Collections.emptyList());
 
-        TransactionReceipt receipt = response != null ? response.getTransactionReceipt() : null;
+        TransactionReceipt receipt = executeTransaction(logisticsCore, function);
+
         if (!isTransactionSuccess(receipt)) {
             String errorMsg = getTransactionErrorMessage(receipt);
             logger.error("链上使委派单失效失败: {}", errorMsg);

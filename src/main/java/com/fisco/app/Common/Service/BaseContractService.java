@@ -10,6 +10,7 @@ import org.fisco.bcos.sdk.v3.model.TransactionReceipt;
 import org.fisco.bcos.sdk.v3.transaction.model.dto.CallResponse;
 import org.fisco.bcos.sdk.v3.transaction.model.dto.TransactionResponse;
 import org.fisco.bcos.sdk.v3.transaction.model.exception.ContractException;
+import org.fisco.bcos.sdk.v3.codec.datatypes.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -160,6 +161,47 @@ public abstract class BaseContractService {
      */
     protected TransactionResponse sendTransaction(Contract contract, String functionName, Object[] params) {
         return sendTransactionWithAudit(contract, functionName, params, "CONTRACT_INVOKE");
+    }
+
+    /**
+     * 使用反射调用私有方法执行动态 Function 交易
+     */
+    protected TransactionReceipt executeTransaction(Contract contract, Function function) {
+        if (!fiscoEnabled) {
+            logger.warn("FISCO BCOS 功能已禁用，跳过交易");
+            return null;
+        }
+
+        int attempt = 0;
+        while (attempt < retryTimes) {
+            try {
+                // 使用反射调用 Contract 的 executeTransaction 方法
+                java.lang.reflect.Method method = Contract.class.getDeclaredMethod(
+                        "executeTransaction", Function.class);
+                method.setAccessible(true);
+                Object result = method.invoke(contract, function);
+
+                if (result instanceof TransactionReceipt) {
+                    return (TransactionReceipt) result;
+                } else if (result instanceof TransactionResponse) {
+                    TransactionResponse response = (TransactionResponse) result;
+                    return response.getTransactionReceipt();
+                }
+                throw new ContractException("未知的返回类型: " + result.getClass().getName());
+            } catch (Exception e) {
+                attempt++;
+                logger.warn("交易失败 (尝试 {}/{}): {}", attempt, retryTimes, e.getMessage());
+                if (attempt < retryTimes) {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(retryDelay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     /**
